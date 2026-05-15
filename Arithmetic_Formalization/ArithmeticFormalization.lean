@@ -43,16 +43,27 @@ theorem toNat_cons (d : Digit) (ds : MultiDigit) :
 --We want a function that we can chain together to implement our larger
 --addition algorithm. Hence we need an input carry as well as an output
 --carry alongside the two digits to be added
+--Helper Definition
+def carryVal : Bool → Nat
+  | true  => 1
+  | false => 0
+--Some theorems to help in simplification
+@[simp] theorem carryVal_true : carryVal true = 1 := rfl
+@[simp] theorem carryVal_false : carryVal false = 0 := rfl
+@[simp] theorem carryVal_bound (c : Bool) : carryVal c ≤ 1 := by
+  cases c <;> simp [carryVal]
+
 def addDigits (a b : Digit) (carry : Bool) : Digit × Bool :=
-  let sum := a.val + b.val + if carry then 1 else 0
+  let sum := a.val + b.val + carryVal carry
   --Proving an upperbound for sum
   have hsum : sum ≤ 19 := by
     have ha := a.isLt  -- a.val < 10
     have hb := b.isLt  -- b.val < 10
-    simp [sum]
-    split_ifs <;> omega
-  -- split_ifs allows omega to reason about the two branches
-  --(i.e with input carry and without) seperately
+    -- carryVal carry ≤ 1 by carryVal_bound
+    -- so sum ≤ 9 + 9 + 1 = 19
+    have hc := carryVal_bound carry
+    omega
+  -- if sum < 10 no carry needed, otherwise carry 1 to next column
   if h : sum < 10
   --h serves as a proof that sum<10(if evaluated to true) and can be used subsequently
   then (⟨sum, h⟩, false)
@@ -66,16 +77,19 @@ def addDigits (a b : Digit) (carry : Bool) : Digit × Bool :=
 --Correctness Proof
 theorem addDigits_correct (a b : Digit) (carry : Bool) :
     (addDigits a b carry).1.val +
-    10 * (if (addDigits a b carry).2 then 1 else 0) =
-    a.val + b.val + if carry then 1 else 0 := by
+    10 * carryVal (addDigits a b carry).2 =
+    a.val + b.val + carryVal carry := by
   have ha := a.isLt
   have hb := b.isLt
+  have hc := carryVal_bound carry
   unfold addDigits
   --unfold replaces (addDigits a b carry) in the goal with its definition body
-  simp only []
+  simp only [carryVal]
   split_ifs with h <;>
-  --splits proof into case with carry and case without carry
-  simp_all <;> omega
+  --splits proof into case carry=true (sum≥10) and carry=false (sum<10)
+  --in each case carryVal reduces to its concrete value (0 or 1)
+  --allowing omega to close the arithmetic goal
+  simp_all [carryVal] <;> omega
 
 --Now that we have a verified method to add two digits along with a carry
 --it is just needed to extend it to column wise addition
@@ -130,3 +144,9 @@ theorem verticalAdd_correct (a b : MultiDigit) (carry : Bool) :
     toNat a + toNat b + if carry then 1 else 0 := by
     sorry
   --Will work on this requires bit more reading up
+
+--Some basic lemmas/definitions for proofs later
+
+theorem toNat_nonnegative (xs : MultiDigit) :
+    0 ≤ toNat xs := by
+  omega
