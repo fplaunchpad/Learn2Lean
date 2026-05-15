@@ -1,0 +1,11 @@
+{"plugins": [],
+ "package": "testwithmathlib",
+ "options":
+ {"weak.linter.mathlibStandardSet": true,
+  "relaxedAutoImplicit": false,
+  "pp.unicode.fun": true,
+  "maxSynthPendingDepth": 3},
+ "name": "Testwithmathlib.Basic",
+ "isModule": false,
+ "importArts": {},
+ "dynlibs": []}
