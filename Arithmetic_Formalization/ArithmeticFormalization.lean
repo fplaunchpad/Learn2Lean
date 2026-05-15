@@ -45,7 +45,7 @@ theorem toNat_cons (d : Digit) (ds : MultiDigit) :
 --carry alongside the two digits to be added
 def addDigits (a b : Digit) (carry : Bool) : Digit × Bool :=
   let sum := a.val + b.val + if carry then 1 else 0
-  --Proving an upperbound for
+  --Proving an upperbound for sum
   have hsum : sum ≤ 19 := by
     have ha := a.isLt  -- a.val < 10
     have hb := b.isLt  -- b.val < 10
@@ -64,7 +64,6 @@ def addDigits (a b : Digit) (carry : Bool) : Digit × Bool :=
 #eval addDigits ⟨9, by omega⟩ ⟨9, by omega⟩ true   -- 9+9+1=19, expect (9, true)
 
 --Correctness Proof
---
 theorem addDigits_correct (a b : Digit) (carry : Bool) :
     (addDigits a b carry).1.val +
     10 * (if (addDigits a b carry).2 then 1 else 0) =
@@ -80,21 +79,33 @@ theorem addDigits_correct (a b : Digit) (carry : Bool) :
 
 --Now that we have a verified method to add two digits along with a carry
 --it is just needed to extend it to column wise addition
---mimicing the way we do it with pen and paper
+--mimicking the way we do it with pen and paper
 def verticalAdd : MultiDigit → MultiDigit → Bool → MultiDigit
+  -- Base Case: Both numbers are exhausted and there is no remaining carry.
   | [], [], false => []
+  --Final Carry Case: Both numbers are exhausted, but we have a leftover carry.
+  -- This corresponds to the leading carry digit in ordinary arithmetic.
   | [], [], true  => [⟨1, by omega⟩]
+  -- Extension Case (Right): Second list is longer.
+  -- We continue adding the carry to the remaining digits of 'b'.
   | [], b :: bs, c =>
       let (d, c') := addDigits ⟨0, by omega⟩ b c
       d :: verticalAdd [] bs c'
+  -- Extension Case (Left): First list is longer.
+  -- We continue adding the carry to the remaining digits of 'a'.
   | a :: as, [], c =>
       let (d, c') := addDigits a ⟨0, by omega⟩ c
       d :: verticalAdd as [] c'
+  -- Recursive Case: Standard column addition where both numbers have digits remaining.
   | a :: as, b :: bs, c =>
       let (d, c') := addDigits a b c
       d :: verticalAdd as bs c'
 termination_by a b _ => a.length + b.length
 --have to explicity justify termination as recursion is a bit complicated here
+/-
+  To prove this function eventually stops, we show the sum of the lengths
+  of both lists strictly decreases with every recursive call.
+-/
 
 --Test cases
 #eval toNat (verticalAdd
