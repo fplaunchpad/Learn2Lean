@@ -101,7 +101,8 @@ def verticalAdd : MultiDigit → MultiDigit → Bool → MultiDigit
       let (d, c') := addDigits a b c
       d :: verticalAdd as bs c'
 termination_by a b _ => a.length + b.length
---have to explicity justify termination as recursion is a bit complicated here
+-- Lean cannot automatically infer termination here,
+-- so we explicitly provide a decreasing measure.
 /-
   To prove this function eventually stops, we show the sum of the lengths
   of both lists strictly decreases with every recursive call.
