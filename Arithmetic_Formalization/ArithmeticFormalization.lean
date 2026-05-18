@@ -33,9 +33,9 @@ def toNat : MultiDigit → Nat
   routine arithmetic reasoning.
 -/
 --Trivial Lemmas(Useful for proofs later)
-theorem toNat_nil : toNat [] = 0 := rfl
+@[simp] theorem toNat_nil : toNat [] = 0 := rfl
 --True by base case
-theorem toNat_cons (d : Digit) (ds : MultiDigit) :
+@[simp] theorem toNat_cons (d : Digit) (ds : MultiDigit) :
     toNat (d :: ds) = d.val + 10 * toNat ds := rfl
 --True by recursive structure
 
@@ -138,15 +138,52 @@ termination_by a b _ => a.length + b.length
   [⟨1, by omega⟩, ⟨9, by omega⟩, ⟨8, by omega⟩]    -- 891
   false)
   --expect 1000
-
+--Correctness Proof
+-- The proof mirrors the recursive structure of the algorithm
 theorem verticalAdd_correct (a b : MultiDigit) (carry : Bool) :
     toNat (verticalAdd a b carry) =
-    toNat a + toNat b + if carry then 1 else 0 := by
-    sorry
-  --Will work on this requires bit more reading up
+    toNat a + toNat b + carryVal carry := by
+  --Note : we are including the carry parameter to make the induction easier
+  --actual addition would always correspond to carry = False
+  induction a generalizing b carry with
+  --We induct on list a considering all possible b and carry
+  | nil =>
+    --First list exhausted induction on second list
+    induction b generalizing carry with
+    | nil =>
+      --both list empty
+      cases carry <;> simp [verticalAdd, carryVal]
+      --split into cases and simplify
+    | cons b bs ihb =>
+      --second list still has digits
+      --adding 0 to each digit left
+      simp only [verticalAdd, toNat]
+      --utilizing correctness of single column addition(addDigits)
+      have hcorrect := addDigits_correct ⟨0, by omega⟩ b carry
+      ---- inductive hypothesis for remaining digits with new carry
+      have hih := ihb (addDigits ⟨0, by omega⟩ b carry).2
+      simp [carryVal, toNat] at *
+      omega
+  | cons a as iha =>
+    induction b with
+    | nil =>
+      --second list empty first has digits remaining
+      --mirror to step above
+      simp only [verticalAdd, toNat]
+      have hcorrect := addDigits_correct a ⟨0, by omega⟩ carry
+      have hih := iha [] (addDigits a ⟨0, by omega⟩ carry).2
+      simp [carryVal, toNat] at *
+      omega
+    | cons b bs _ =>
+      --Main case: both list have digits
+      simp only [verticalAdd, toNat]
+      have hcorrect := addDigits_correct a b carry
+      --inductive hypothesis
+      have hih := iha bs (addDigits a b carry).2
+      simp [carryVal, toNat] at *
+      omega
 
---Some basic lemmas/definitions for proofs later
-
+ --Some basic lemmas/definitions for proofs later
 theorem toNat_nonnegative (xs : MultiDigit) :
     0 ≤ toNat xs := by
   omega
