@@ -139,7 +139,7 @@ termination_by a b _ => a.length + b.length
   false)
   --expect 1000
 --Correctness Proof
--- The proof mirrors the recursive structure of the algorithm
+--The proof mirrors the recursive structure of the algorithm
 theorem verticalAdd_correct (a b : MultiDigit) (carry : Bool) :
     toNat (verticalAdd a b carry) =
     toNat a + toNat b + carryVal carry := by
@@ -187,3 +187,5 @@ theorem verticalAdd_correct (a b : MultiDigit) (carry : Bool) :
 theorem toNat_nonnegative (xs : MultiDigit) :
     0 ≤ toNat xs := by
   omega
+
+--check
