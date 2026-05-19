@@ -190,10 +190,17 @@ theorem addDigits_correct (a b : Digit) (carry : Bool) :
     (addDigits a b carry).1.val +
     10 * carryVal (addDigits a b carry).2 =
     a.val + b.val + carryVal carry := by
+  -- Correctness of first table lookup: sum of a and b
   have h1 := addTable_correct a b
+  -- Correctness of second table lookup: sum + 1 when carry is true
   have h2 := addTable_correct (addTable a b).1 ⟨1, by omega⟩
+  -- Expand all 100 digit combinations and both carry values
+  -- giving 200 concrete cases total
+  -- In each case addTable reduces to a specific entry
+  -- and simp_all verifies correctness by direct computation
   fin_cases a <;> fin_cases b <;> cases carry <;>
   simp_all [addDigits, addTable, carryVal]
+
 
 --Now that we have a verified method to add two digits along with a carry
 --it is just needed to extend it to column wise addition
@@ -292,3 +299,109 @@ theorem verticalAdd_correct (a b : MultiDigit) (carry : Bool) :
 theorem toNat_nonnegative (xs : MultiDigit) :
     0 ≤ toNat xs := by
   omega
+
+--Subtraction
+
+def subTable : Digit → Digit → Digit × Bool
+  | ⟨0, _⟩, ⟨0, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨0, _⟩, ⟨1, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨0, _⟩, ⟨2, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨0, _⟩, ⟨3, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨0, _⟩, ⟨4, _⟩ => (⟨6, by omega⟩, true)
+  | ⟨0, _⟩, ⟨5, _⟩ => (⟨5, by omega⟩, true)
+  | ⟨0, _⟩, ⟨6, _⟩ => (⟨4, by omega⟩, true)
+  | ⟨0, _⟩, ⟨7, _⟩ => (⟨3, by omega⟩, true)
+  | ⟨0, _⟩, ⟨8, _⟩ => (⟨2, by omega⟩, true)
+  | ⟨0, _⟩, ⟨9, _⟩ => (⟨1, by omega⟩, true)
+  | ⟨1, _⟩, ⟨0, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨1, _⟩, ⟨1, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨1, _⟩, ⟨2, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨1, _⟩, ⟨3, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨1, _⟩, ⟨4, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨1, _⟩, ⟨5, _⟩ => (⟨6, by omega⟩, true)
+  | ⟨1, _⟩, ⟨6, _⟩ => (⟨5, by omega⟩, true)
+  | ⟨1, _⟩, ⟨7, _⟩ => (⟨4, by omega⟩, true)
+  | ⟨1, _⟩, ⟨8, _⟩ => (⟨3, by omega⟩, true)
+  | ⟨1, _⟩, ⟨9, _⟩ => (⟨2, by omega⟩, true)
+  | ⟨2, _⟩, ⟨0, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨2, _⟩, ⟨1, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨2, _⟩, ⟨2, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨2, _⟩, ⟨3, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨2, _⟩, ⟨4, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨2, _⟩, ⟨5, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨2, _⟩, ⟨6, _⟩ => (⟨6, by omega⟩, true)
+  | ⟨2, _⟩, ⟨7, _⟩ => (⟨5, by omega⟩, true)
+  | ⟨2, _⟩, ⟨8, _⟩ => (⟨4, by omega⟩, true)
+  | ⟨2, _⟩, ⟨9, _⟩ => (⟨3, by omega⟩, true)
+  | ⟨3, _⟩, ⟨0, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨3, _⟩, ⟨1, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨3, _⟩, ⟨2, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨3, _⟩, ⟨3, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨3, _⟩, ⟨4, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨3, _⟩, ⟨5, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨3, _⟩, ⟨6, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨3, _⟩, ⟨7, _⟩ => (⟨6, by omega⟩, true)
+  | ⟨3, _⟩, ⟨8, _⟩ => (⟨5, by omega⟩, true)
+  | ⟨3, _⟩, ⟨9, _⟩ => (⟨4, by omega⟩, true)
+  | ⟨4, _⟩, ⟨0, _⟩ => (⟨4, by omega⟩, false)
+  | ⟨4, _⟩, ⟨1, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨4, _⟩, ⟨2, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨4, _⟩, ⟨3, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨4, _⟩, ⟨4, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨4, _⟩, ⟨5, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨4, _⟩, ⟨6, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨4, _⟩, ⟨7, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨4, _⟩, ⟨8, _⟩ => (⟨6, by omega⟩, true)
+  | ⟨4, _⟩, ⟨9, _⟩ => (⟨5, by omega⟩, true)
+  | ⟨5, _⟩, ⟨0, _⟩ => (⟨5, by omega⟩, false)
+  | ⟨5, _⟩, ⟨1, _⟩ => (⟨4, by omega⟩, false)
+  | ⟨5, _⟩, ⟨2, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨5, _⟩, ⟨3, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨5, _⟩, ⟨4, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨5, _⟩, ⟨5, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨5, _⟩, ⟨6, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨5, _⟩, ⟨7, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨5, _⟩, ⟨8, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨5, _⟩, ⟨9, _⟩ => (⟨6, by omega⟩, true)
+  | ⟨6, _⟩, ⟨0, _⟩ => (⟨6, by omega⟩, false)
+  | ⟨6, _⟩, ⟨1, _⟩ => (⟨5, by omega⟩, false)
+  | ⟨6, _⟩, ⟨2, _⟩ => (⟨4, by omega⟩, false)
+  | ⟨6, _⟩, ⟨3, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨6, _⟩, ⟨4, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨6, _⟩, ⟨5, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨6, _⟩, ⟨6, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨6, _⟩, ⟨7, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨6, _⟩, ⟨8, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨6, _⟩, ⟨9, _⟩ => (⟨7, by omega⟩, true)
+  | ⟨7, _⟩, ⟨0, _⟩ => (⟨7, by omega⟩, false)
+  | ⟨7, _⟩, ⟨1, _⟩ => (⟨6, by omega⟩, false)
+  | ⟨7, _⟩, ⟨2, _⟩ => (⟨5, by omega⟩, false)
+  | ⟨7, _⟩, ⟨3, _⟩ => (⟨4, by omega⟩, false)
+  | ⟨7, _⟩, ⟨4, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨7, _⟩, ⟨5, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨7, _⟩, ⟨6, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨7, _⟩, ⟨7, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨7, _⟩, ⟨8, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨7, _⟩, ⟨9, _⟩ => (⟨8, by omega⟩, true)
+  | ⟨8, _⟩, ⟨0, _⟩ => (⟨8, by omega⟩, false)
+  | ⟨8, _⟩, ⟨1, _⟩ => (⟨7, by omega⟩, false)
+  | ⟨8, _⟩, ⟨2, _⟩ => (⟨6, by omega⟩, false)
+  | ⟨8, _⟩, ⟨3, _⟩ => (⟨5, by omega⟩, false)
+  | ⟨8, _⟩, ⟨4, _⟩ => (⟨4, by omega⟩, false)
+  | ⟨8, _⟩, ⟨5, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨8, _⟩, ⟨6, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨8, _⟩, ⟨7, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨8, _⟩, ⟨8, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨8, _⟩, ⟨9, _⟩ => (⟨9, by omega⟩, true)
+  | ⟨9, _⟩, ⟨0, _⟩ => (⟨9, by omega⟩, false)
+  | ⟨9, _⟩, ⟨1, _⟩ => (⟨8, by omega⟩, false)
+  | ⟨9, _⟩, ⟨2, _⟩ => (⟨7, by omega⟩, false)
+  | ⟨9, _⟩, ⟨3, _⟩ => (⟨6, by omega⟩, false)
+  | ⟨9, _⟩, ⟨4, _⟩ => (⟨5, by omega⟩, false)
+  | ⟨9, _⟩, ⟨5, _⟩ => (⟨4, by omega⟩, false)
+  | ⟨9, _⟩, ⟨6, _⟩ => (⟨3, by omega⟩, false)
+  | ⟨9, _⟩, ⟨7, _⟩ => (⟨2, by omega⟩, false)
+  | ⟨9, _⟩, ⟨8, _⟩ => (⟨1, by omega⟩, false)
+  | ⟨9, _⟩, ⟨9, _⟩ => (⟨0, by omega⟩, false)
+  | ⟨n+10, h⟩, _ => absurd h (by omega)
+  | _, ⟨n+10, h⟩ => absurd h (by omega)
