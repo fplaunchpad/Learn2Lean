@@ -415,9 +415,9 @@ def subtractionStepDisplay (a b : MultiDigit) (step : Nat) : Html :=
       subInvariantPanel a b step
     ]
 -- 214 - 91 = 123, borrow in tens column
-#html subtractionStepDisplay (fromNat 214) (fromNat 91) 0
-#html subtractionStepDisplay (fromNat 214) (fromNat 91) 1
-#html subtractionStepDisplay (fromNat 214) (fromNat 91) 2
+#html subtractionStepDisplay (fromNat 714) (fromNat 93) 0
+#html subtractionStepDisplay (fromNat 714) (fromNat 93) 1
+#html subtractionStepDisplay (fromNat 714) (fromNat 93) 2
 
 -- 100 - 1 = 99, cascading borrows
 #html subtractionStepDisplay (fromNat 100) (fromNat 1) 0

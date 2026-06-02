@@ -300,3 +300,141 @@ theorem mulHelper_correct (a b : MultiDigit) (acc : MultiDigit) :
 theorem verticalMul_correct (a b : MultiDigit) :
     toNat (verticalMul a b) = toNat a * toNat b := by
   simp [verticalMul, mulHelper_correct, toNat]
+
+-- Shift a MultiDigit left by n positions (multiply by 10^n)
+-- Implemented by prepending n zeros (least significant first)
+def shiftLeft : MultiDigit → Nat → MultiDigit
+  | xs, 0     => xs
+  | xs, n + 1 => ⟨0, by omega⟩ :: shiftLeft xs n
+
+-- A single partial product: multiply a by one digit of b
+-- then shift left by the digit's position
+def partialProduct (a : MultiDigit) (b : Digit) (pos : Nat) : MultiDigit :=
+  shiftLeft (mulDigit a b ⟨0, by omega⟩) pos
+
+-- Collect all partial products
+-- Each digit of b generates one partial product shifted by its position
+def partialProducts : MultiDigit → MultiDigit → Nat → List MultiDigit
+  | _, [], _        => []
+  | a, b :: bs, pos =>
+      partialProduct a b pos :: partialProducts a bs (pos + 1)
+
+-- Add a list of MultiDigit numbers together
+def sumAll : List MultiDigit → MultiDigit
+  | []      => []
+  | x :: xs => verticalAdd x (sumAll xs) false
+
+-- Full long multiplication using partial products
+def verticalMulPP (a b : MultiDigit) : MultiDigit :=
+  sumAll (partialProducts a b 0)
+
+-- 123 × 45 = 5535
+#eval toNat (verticalMulPP
+  [⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩]
+  [⟨5, by omega⟩, ⟨4, by omega⟩])
+-- expect 5535
+
+-- 99 × 99 = 9801
+#eval toNat (verticalMulPP
+  [⟨9, by omega⟩, ⟨9, by omega⟩]
+  [⟨9, by omega⟩, ⟨9, by omega⟩])
+-- expect 9801
+
+-- 123 × 891 = 109593
+#eval toNat (verticalMulPP
+  [⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩]
+  [⟨1, by omega⟩, ⟨9, by omega⟩, ⟨8, by omega⟩])
+-- expect 109593
+
+-- anything × 0 = 0
+#eval toNat (verticalMulPP
+  [⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩]
+  [])
+-- expect 0
+
+-- shiftLeft multiplies by 10^n
+theorem shiftLeft_correct (a : MultiDigit) (n : Nat) :
+    toNat (shiftLeft a n) = toNat a * 10^n := by
+  induction n with
+  | zero => simp [shiftLeft]
+  | succ n ih =>
+    simp [shiftLeft, ih]
+    ring
+
+-- partialProduct correctness
+theorem partialProduct_correct (a : MultiDigit) (b : Digit) (pos : Nat) :
+    toNat (partialProduct a b pos) = toNat a * b.val * 10^pos := by
+  simp [partialProduct, shiftLeft_correct, mulDigit_correct]
+
+
+-- sumAll correctness
+theorem sumAll_correct (products : List MultiDigit) :
+    toNat (sumAll products) = (products.map toNat).sum := by
+  induction products with
+  | nil => simp [sumAll]
+  | cons x xs ih =>
+    simp [sumAll, verticalAdd_correct', ih]
+
+
+-- partialProducts correctness
+theorem partialProducts_correct (a b : MultiDigit) (pos : Nat) :
+    (partialProducts a b pos).map toNat =
+    b.mapIdx (fun i d => toNat a * d.val * 10^(pos + i)) := by
+  --The list of partial product values equals what you'd get by mapping each digit of b with its
+  -- index to toNat a * digit * 10^(pos + index).
+  induction b generalizing pos with
+  | nil =>
+    -- Base case: Both sides evaluate to empty lists.
+    -- rfl forces the kernel to compute both sides to [], closing the goal instantly.
+    rfl
+  | cons d ds ih =>
+    -- Step 1: Use standard list lemmas to evaluate one step of both sides
+    simp only [partialProducts, List.map_cons, List.mapIdx_cons]
+    -- Step 2: Split into Head equality and Tail equality
+    congr 1
+    · -- Subgoal 1: Head equality
+      simp [partialProduct_correct]
+    · -- Subgoal 2: Tail equality
+      -- Apply the inductive hypothesis to the tail
+      rw [ih (pos + 1)]
+      -- We now have: ds.mapIdx (f) = ds.mapIdx (g).
+      -- congr 1 strips the mapIdx constructor, leaving just the inner functions to prove equal.
+      congr 1
+      -- ext introduces the function arguments: index 'i' and digit 'y'
+      ext i y
+      -- Remove the common multiplicative factor.
+      congr 1
+      -- 2nd congr 1 strips the base 10:
+      congr 1
+      -- Now that the non-linear exponentiation is gone, omega handles the linear
+      --addition perfectly!
+      omega
+
+-- Helper lemma that generalizes the position index to allow step-by-step index shifting
+lemma verticalMulPP_helper (a b : MultiDigit) (pos : Nat) :
+    toNat (sumAll (partialProducts a b pos)) = toNat a * toNat b * 10^pos := by
+  induction b generalizing pos with
+  | nil =>
+    -- simp automatically handles the 'X * 0 = 0' arithmetic
+    simp [partialProducts, sumAll, toNat]
+  | cons d ds ih =>
+    -- Step 1: Explicitly unfold definitions to expose the head and tail structure
+    unfold partialProducts sumAll
+    -- Step 2: Apply verticalAdd_correct' to split the addition
+    -- This exposes the trapped recursive sumAll term so we can rewrite it.
+    simp [verticalAdd_correct', partialProduct_correct, toNat]
+    -- Step 3: Now that the term is exposed, the generalized IH matches perfectly.
+    rw [ih (pos + 1)]
+    -- Step 4: Clean up the algebraic polynomial distribution
+    ring
+
+
+-- Main theorem
+theorem verticalMulPP_correct (a b : MultiDigit) :
+    toNat (verticalMulPP a b) = toNat a * toNat b := by
+  -- Step 1: Unfold the top-level definition
+  unfold verticalMulPP
+  -- Step 2: Instantiate our helper lemma at position 0
+  rw [verticalMulPP_helper a b 0]
+  -- Step 3: Since 10^0 = 1, ring perfectly simplifies the multiplication to finish the proof
+  ring

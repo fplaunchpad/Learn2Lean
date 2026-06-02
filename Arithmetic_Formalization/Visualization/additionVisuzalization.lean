@@ -61,9 +61,6 @@ def carryBox (c : Bool) : Html :=
 
 #html carryBox true
 #html carryBox false
-
-
-
 -- Render the full carry row
 def carryRow (carries : List Bool) : Html :=
   let boxes := (carries.reverse.map carryBox).toArray
@@ -153,55 +150,6 @@ def additionDisplay (a b : MultiDigit) : Html :=
   [⟨9, by omega⟩, ⟨9, by omega⟩]
   [⟨1, by omega⟩]
 
--- Result box showing computed digit
-def resultBoxComputed (d : Nat) : Html :=
-  Html.element "div"
-    #[("style", json% {
-      display: "inline-block",
-      border: "2px solid yellow",
-      width: "40px",
-      height: "40px",
-      textAlign: "center",
-      lineHeight: "40px",
-      fontSize: "20px",
-      color: "yellow",
-      margin: "3px",
-      backgroundColor: "black"
-    })]
-    #[Html.text s!"{d}"]
-
--- Result box showing unknown digit
-def resultBoxUnknown : Html :=
-  Html.element "div"
-    #[("style", json% {
-      display: "inline-block",
-      border: "2px solid gray",
-      width: "40px",
-      height: "40px",
-      textAlign: "center",
-      lineHeight: "40px",
-      fontSize: "20px",
-      color: "gray",
-      margin: "3px",
-      backgroundColor: "black"
-    })]
-    #[Html.text "?"]
-
--- Result row: computed digits show actual value, future digits show ?
-def resultRowStepped (result : MultiDigit) (step : Nat) : Html :=
-  let maxIdx := result.length - 1
-  let boxes := (result.reverse.mapIdx (fun i d =>
-    let listIdx := maxIdx - i
-    if listIdx ≤ step
-    then resultBoxComputed d.val
-    else resultBoxUnknown)).toArray
-  Html.element "div"
-    #[("style", json% {
-      display: "flex",
-      flexDirection: "row",
-      justifyContent: "flex-end"
-    })]
-    boxes
 
 -- Get carry value going into column k
 def getCarryAt (a b : MultiDigit) (k : Nat) : Bool :=
