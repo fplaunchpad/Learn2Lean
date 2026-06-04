@@ -1,9 +1,9 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["9d573d7f2c1a3944.olean"],
-  "i": "417abbb7d2579ab7.ilean",
-  "c": "7c76d23356dd36ef.c"},
+ {"o": ["4a4d69e081e8b33b.olean"],
+  "i": "d0acaa7cec6906f8.ilean",
+  "c": "33f4125890c29de3.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\Cli\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\batteries\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\Qq\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\aesop\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\proofwidgets\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\importGraph\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\LeanSearchClient\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\plausible\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\packages\\mathlib\\.lake\\build\\lib\\lean;C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\build\\lib\\lean c:\\Users\\Anubhav\\.elan\\toolchains\\leanprover--lean4---v4.29.1\\bin\\lean.exe C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\Arithmetic_Formalization\\Multiplication.lean -o C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\build\\lib\\lean\\Arithmetic_Formalization\\Multiplication.olean -i C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\build\\lib\\lean\\Arithmetic_Formalization\\Multiplication.ilean -c C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\build\\ir\\Arithmetic_Formalization\\Multiplication.c --setup C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\.lake\\build\\ir\\Arithmetic_Formalization\\Multiplication.setup.json --json",
@@ -31,11 +31,22 @@
   {"message":
    "Arithmetic_Formalization/Multiplication.lean:178:4: 'rw [ih]' uses '⊢'!",
    "level": "info"},
-  {"message": "Arithmetic_Formalization/Multiplication.lean:246:0: 109593",
+  {"message": "Arithmetic_Formalization/Multiplication.lean:253:0: 5535",
    "level": "info"},
-  {"message": "Arithmetic_Formalization/Multiplication.lean:252:0: 891",
+  {"message": "Arithmetic_Formalization/Multiplication.lean:259:0: 9801",
    "level": "info"},
-  {"message": "Arithmetic_Formalization/Multiplication.lean:258:0: 0",
+  {"message": "Arithmetic_Formalization/Multiplication.lean:265:0: 109593",
+   "level": "info"},
+  {"message": "Arithmetic_Formalization/Multiplication.lean:271:0: 0",
+   "level": "info"},
+  {"message":
+   "Arithmetic_Formalization/Multiplication.lean:346:4: 'simp [verticalAdd_correct', partialProduct_correct, toNat]\n    -- Step 3: Now that the term is exposed, the generalized IH matches perfectly.' is a flexible tactic modifying '⊢'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.\n\nNote: This linter can be disabled with `set_option linter.flexible false`",
+   "level": "warning"},
+  {"message":
+   "Arithmetic_Formalization/Multiplication.lean:346:4: Try this:\n  [apply] simp only [toNat_cons]",
+   "level": "info"},
+  {"message":
+   "Arithmetic_Formalization/Multiplication.lean:348:4: 'rw [ih (pos + 1)]' uses '⊢'!",
    "level": "info"}],
  "inputs":
  [["Arithmetic_Formalization.Multiplication:deps",
@@ -59,7 +70,7 @@
   ["Lean 4.29.1, commit f72c35b3f637c8c6571d353742168ab66cc22c00",
    "fa77a35a41db35c0"],
   ["C:\\Users\\Anubhav\\Downloads\\Lean4\\Arithmetic_Formalization\\Arithmetic_Formalization\\Multiplication.lean",
-   "1e67ca2a88a5908f"],
+   "b8ecf46907c2b30d"],
   ["options",
    [["-DmaxSynthPendingDepth=3", "c78e353d34de85d4"],
     ["-Dweak.linter.mathlibStandardSet=true", "8a155799906f2b42"],
@@ -69,4 +80,4 @@
   ["Module.name: Arithmetic_Formalization.Multiplication", "980b7724f64b42b3"],
   ["Package.id?: (some Arithmetic_Formalization)", "f3655d0ef3df9223"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "e6cc1837daee890d"}
+ "depHash": "650fa2d89e20cae6"}
