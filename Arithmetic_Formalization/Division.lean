@@ -126,7 +126,6 @@ theorem trimTrailingZeros_correct (a : MultiDigit) :
       -- The trimmed tail is nonempty.
       -- In this case trimTrailingZeros keeps the current digit and
       -- recursively trimmed tail.
-      --
       -- The inductive hypothesis tells us that replacing ds by
       -- trimTrailingZeros ds preserves the represented value.
       simp [toNat, ← ih, h]
@@ -166,29 +165,22 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
     let (quot, rem) := longDivHelper ds b acc
     acc * 10^(ds.length) + toNat ds.reverse =
       toNat quot.reverse * b.val + rem ∧ rem < b.val := by
-
   -- Induction on the remaining digits.
   -- The accumulator stores the current remainder and satisfies acc < b.
   induction ds generalizing acc with
-
   | nil =>
       -- No digits remain: acc is the final remainder.
-      simp [longDivHelper, toNat, hb, hacc]
-
+      simp [longDivHelper, hacc]
   | cons d ds ih =>
       unfold longDivHelper
-
       -- Bring down the next digit as in ordinary long division.
       set currentRem := acc * 10 + d.val
-
       -- Select the next quotient digit and resulting remainder.
       set q := findQuotientDigit currentRem b
       set units := (mulTable q b).1
       set tens := (mulTable q b).2
       set newRem := currentRem - (units.val + 10 * tens.val)
-
       have hd : d.val < 10 := d.isLt
-
       -- Since acc < b and d < 10, the current dividend is < 10*b.
       have h_bound : currentRem < 10 * b.val := by
         dsimp [currentRem]
@@ -198,72 +190,55 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
       --     q*b ≤ currentRem < (q+1)*b.
       have ⟨hq_lower, hq_upper⟩ :=
         findQuotientDigit_correct currentRem b hb h_bound
-
       have h_dist :
           (q.val + 1) * b.val =
           q.val * b.val + b.val := by
         rw [Nat.add_mul, Nat.one_mul]
-
       rw [h_dist] at hq_upper
-
       -- Multiplication table correctness.
       have h_mul_eq :
           units.val + 10 * tens.val =
           q.val * b.val :=
         mulTable_correct q b
-
       -- The new remainder remains strictly smaller than the divisor.
       have h_newRem_bound : newRem < b.val := by
         dsimp [newRem, currentRem]
         rw [h_mul_eq]
         omega
-
       cases h_rec : longDivHelper ds b newRem with
       | mk quotTail finalRem =>
-
       -- Apply the induction hypothesis to the recursive call.
       have h_ih := ih newRem h_newRem_bound
-
       rw [h_rec] at h_ih
       dsimp only at h_ih
-
       dsimp only
       try rw [h_rec]
       dsimp only
-
       constructor
-
       · -- Combine recursive correctness with the current division step
         -- to obtain:
         --     dividend = divisor * quotient + remainder.
         rw [List.length_cons]
         rw [toNat_reverse_cons d ds]
         rw [toNat_reverse_cons q quotTail]
-
         have h_len := longDivHelper_length ds b newRem
         rw [h_rec] at h_len
         dsimp only at h_len
         rw [h_len]
-
         rw [Nat.pow_add, Nat.pow_one]
-
         have h_eq := h_ih.1
-
         generalize 10^(ds.length) = E at *
-
         -- Rewrite the current dividend as newRem + q*b.
         have h_sub :
             newRem =
             (acc * 10 + d.val) - q.val * b.val := by
           dsimp [newRem, currentRem]
           rw [h_mul_eq]
-
         have h_rem_add :
             acc * 10 + d.val =
             newRem + q.val * b.val := by
           rw [h_sub]
           exact (Nat.sub_add_cancel hq_lower).symm
-
         calc
           acc * (E * 10) + (toNat ds.reverse + d.val * E)
               = (acc * 10 + d.val) * E + toNat ds.reverse := by ring
@@ -275,7 +250,6 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
                 rw [h_eq]
           _ = (toNat quotTail.reverse + q.val * E)
                 * b.val + finalRem := by ring
-
       · -- The recursive call already guarantees the remainder bound.
         exact h_ih.2
 
