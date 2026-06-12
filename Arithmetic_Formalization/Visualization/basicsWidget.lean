@@ -90,10 +90,6 @@ def numberRowStepped (a : MultiDigit) (step : Nat) : Html :=
     })]
     boxes
 
--- Compute toNat of first n digits of a MultiDigit number
-def toNatPrefix (a : MultiDigit) (n : Nat) : Nat :=
-  toNat (a.take n)
-
 -- Result box showing computed digit
 def resultBoxComputed (d : Nat) : Html :=
   Html.element "div"

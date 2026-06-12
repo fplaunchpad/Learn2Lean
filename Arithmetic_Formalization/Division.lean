@@ -1,5 +1,10 @@
+import Mathlib.Tactic.FinCases  -- fin_cases
+import Mathlib.Data.Fintype.Basic  -- Fintype (Fin 10) instance for fin_cases
+import Mathlib.Tactic.Ring      -- ring
+import Mathlib.Tactic.SplitIfs  -- split_ifs
 import Arithmetic_Formalization.Foundations
 import Arithmetic_Formalization.Multiplication
+import Arithmetic_Formalization.Subtraction
 
 -- Find the largest q (0-9) such that b * q ≤ n
 -- This is the "trial digit" step in pen and paper division
@@ -168,6 +173,7 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
   -- Induction on the remaining digits.
   -- The accumulator stores the current remainder and satisfies acc < b.
   induction ds generalizing acc with
+  -- must generalize acc since the recursive call uses newRem, not the outer acc
   | nil =>
       -- No digits remain: acc is the final remainder.
       simp [longDivHelper, hacc]
@@ -185,7 +191,6 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
       have h_bound : currentRem < 10 * b.val := by
         dsimp [currentRem]
         omega
-
       -- The quotient digit satisfies:
       --     q*b ≤ currentRem < (q+1)*b.
       have ⟨hq_lower, hq_upper⟩ :=
@@ -228,6 +233,7 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
         rw [Nat.pow_add, Nat.pow_one]
         have h_eq := h_ih.1
         generalize 10^(ds.length) = E at *
+        -- replace the concrete power with E so ring can handle it symbolically
         -- Rewrite the current dividend as newRem + q*b.
         have h_sub :
             newRem =
@@ -239,6 +245,7 @@ theorem longDivHelper_correct (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
             newRem + q.val * b.val := by
           rw [h_sub]
           exact (Nat.sub_add_cancel hq_lower).symm
+        -- show: current dividend = (tail quotient + current digit contribution) × b + finalRem
         calc
           acc * (E * 10) + (toNat ds.reverse + d.val * E)
               = (acc * 10 + d.val) * E + toNat ds.reverse := by ring
@@ -282,3 +289,81 @@ theorem longDiv_correct (a : MultiDigit) (b : Digit) (hb : b.val ≠ 0) :
     omega
   · -- The helper theorem also guarantees the remainder bound.
     exact h_helper.2
+
+
+--Multi Digit divisor
+def findQuotientDigitMDHelper (n : Nat) (b : MultiDigit) : Nat → Digit
+  | 0 => ⟨0, by omega⟩
+  | q + 1 =>
+      if h : q + 1 < 10 then
+        let qDigit : Digit := ⟨q + 1, h⟩
+        -- mulDigit b qDigit 0 is b × q as a MultiDigit
+        -- exactly as mulTable qDigit b gave q × b for single-digit b
+        let product := mulDigit b qDigit ⟨0, by omega⟩
+        if toNat product ≤ n then
+          qDigit
+        else
+          findQuotientDigitMDHelper n b q
+      else
+        ⟨0, by omega⟩
+
+def findQuotientDigitMD (n : Nat) (b : MultiDigit) : Digit :=
+  findQuotientDigitMDHelper n b 9
+#eval findQuotientDigitMD 123 [⟨5,by omega⟩, ⟨4,by omega⟩]
+-- 123 ÷ 45 → trial digit 2  (45×2=90 ≤ 123 < 135=45×3)
+#eval findQuotientDigitMD 334 [⟨5,by omega⟩, ⟨4,by omega⟩]
+-- 334 ÷ 45 → trial digit 7  (45×7=315 ≤ 334 < 360=45×8)
+
+def longDivHelperMD : List Digit → MultiDigit → MultiDigit → MultiDigit × MultiDigit
+  | [], _, acc => ([], acc)
+  | d :: ds, b, acc =>
+      -- Bring down the next digit.
+      -- Single-digit version:  currentRem = acc * 10 + d.val   (Nat)
+      -- Multi-digit version:   currentRem = d :: acc            (MultiDigit)
+      -- These are equal:  toNat (d :: acc) = toNat acc * 10 + d.val
+      let currentRem : MultiDigit := d :: acc
+      -- Trial digit: largest q such that b × q ≤ currentRem
+      let q := findQuotientDigitMD (toNat currentRem) b
+      -- Compute b × q (the amount to subtract from currentRem)
+      let product := mulDigit b q ⟨0, by omega⟩
+      -- Subtract: product ≤ currentRem guaranteed by findQuotientDigitMD
+      -- adjust verticalSub signature here if your API differs
+      let newRem := verticalSub currentRem product false
+      let (quotTail, finalRem) := longDivHelperMD ds b newRem
+      (q :: quotTail, finalRem)
+termination_by ds _ _ => ds.length
+
+def longDivMD (a : MultiDigit) (b : MultiDigit) : MultiDigit × MultiDigit :=
+  -- Same double-reverse trick as longDiv
+  let (quot, rem) := longDivHelperMD a.reverse b []
+  (trimTrailingZeros quot.reverse, trimTrailingZeros rem)
+
+-- 1234 ÷ 45 = 27 remainder 19
+#eval longDivMD
+  [⟨4,by omega⟩, ⟨3,by omega⟩, ⟨2,by omega⟩, ⟨1,by omega⟩]
+  [⟨5,by omega⟩, ⟨4,by omega⟩]
+-- expect ([7,2], [9,1])  →  27 rem 19
+
+-- 891 ÷ 9 = 99 remainder 0  (single-digit divisor still works)
+#eval longDivMD
+  [⟨1,by omega⟩, ⟨9,by omega⟩, ⟨8,by omega⟩]
+  [⟨9,by omega⟩]
+-- expect ([9,9], [])
+
+-- 1000 ÷ 13 = 76 remainder 12
+#eval longDivMD
+  [⟨0,by omega⟩, ⟨0,by omega⟩, ⟨0,by omega⟩, ⟨1,by omega⟩]
+  [⟨3,by omega⟩, ⟨1,by omega⟩]
+-- expect ([6,7], [2,1])
+
+-- 100 ÷ 100 = 1 remainder 0
+#eval longDivMD
+  [⟨0,by omega⟩, ⟨0,by omega⟩, ⟨1,by omega⟩]
+  [⟨0,by omega⟩, ⟨0,by omega⟩, ⟨1,by omega⟩]
+-- expect ([1], [])
+
+-- 7 ÷ 13 = 0 remainder 7  (dividend < divisor)
+#eval longDivMD
+  [⟨7,by omega⟩]
+  [⟨3,by omega⟩, ⟨1,by omega⟩]
+-- expect ([], [7])

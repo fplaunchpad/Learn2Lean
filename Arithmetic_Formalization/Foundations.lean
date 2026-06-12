@@ -1,4 +1,6 @@
-import Mathlib.Tactic
+-- Foundations uses only core Lean tactics (omega, simp, rfl, cases),
+-- so it needs no Mathlib import. Downstream files import the specific
+-- Mathlib tactic modules they actually use.
 --Core Represenation
 abbrev Digit := Fin 10
 --Ensures digits less than 10(i.e valid)
@@ -47,3 +49,6 @@ def carryVal : Bool → Nat
 @[simp] theorem carryVal_false : carryVal false = 0 := rfl
 @[simp] theorem carryVal_bound (c : Bool) : carryVal c ≤ 1 := by
   cases c <;> simp [carryVal]
+
+def toNatPrefix (a : MultiDigit) (n : Nat) : Nat :=
+  toNat (a.take n)

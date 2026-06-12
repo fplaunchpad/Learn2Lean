@@ -1,4 +1,5 @@
-import Mathlib.Tactic
+import Mathlib.Tactic.FinCases       -- fin_cases (was: import Mathlib.Tactic)
+import Mathlib.Data.Fintype.Basic    -- Fintype (Fin 10) instance that fin_cases needs
 import Arithmetic_Formalization.Foundations
 --Addition
 --We want a function that we can chain together to implement our larger

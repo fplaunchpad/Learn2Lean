@@ -1,3 +1,7 @@
+import Mathlib.Tactic.FinCases  -- fin_cases (was inherited from Mathlib.Tactic)
+import Mathlib.Data.Fintype.Basic                     -- Fintype (Fin 10) instance for fin_cases
+import Mathlib.Tactic.Ring      -- ring
+import Mathlib.Algebra.BigOperators.Group.List.Basic  -- List.sum + its simp lemmas
 import Arithmetic_Formalization.Foundations
 import Arithmetic_Formalization.Addition
 
