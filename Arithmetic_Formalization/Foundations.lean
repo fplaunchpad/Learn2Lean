@@ -1,6 +1,6 @@
--- Foundations uses only core Lean tactics (omega, simp, rfl, cases),
--- so it needs no Mathlib import. Downstream files import the specific
--- Mathlib tactic modules they actually use.
+--Baisc definitions and theorem common across the project
+import Mathlib.Data.Nat.Basic
+
 --Core Represenation
 abbrev Digit := Fin 10
 --Ensures digits less than 10(i.e valid)
@@ -52,3 +52,20 @@ def carryVal : Bool → Nat
 
 def toNatPrefix (a : MultiDigit) (n : Nat) : Nat :=
   toNat (a.take n)
+
+def fromNat : Nat → MultiDigit
+  | 0 => []
+  | n + 1 => ⟨(n + 1) % 10, by omega⟩ :: fromNat ((n + 1) / 10)
+termination_by n => n
+
+-- Round-trip: toNat recovers the number fromNat encoded.
+theorem toNat_fromNat (n : Nat) : toNat (fromNat n) = n := by
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    match n with
+    | 0 => simp [fromNat]
+    | k + 1 =>
+      rw [fromNat, toNat_cons]
+      rw [ih ((k + 1) / 10) (by omega)]
+      simp only []
+      omega

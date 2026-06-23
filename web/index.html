@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Verified Arithmetic — Addition &amp; Subtraction</title>
+<style>
+  :root{
+    --bg:#0d0d0d; --panel:#161616; --box:#1a1a1a; --line:#333;
+    --fg:#dcdcdc; --muted:#8a8a8a; --yellow:#ffe14d; --cyan:#4dd0e1;
+    --green:#4caf50; --red:#f44336; --orange:#ff8c00; --accent:#2f7d8c; --link:#6cc7d6;
+    --tac:#4dd0e1; --lem:#ffd166; --kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; line-height:1.65;}
+  .wrap{max-width:860px; margin:0 auto; padding:30px 22px 90px;}
+  h1{font-size:26px; margin:0 0 6px; color:#fff}
+  h2{font-size:21px; color:#fff; margin:48px 0 4px; padding-top:12px; border-top:1px solid var(--line)}
+  h3{font-size:16px; color:var(--cyan); margin:26px 0 6px; font-weight:600}
+  .sub{color:var(--muted); margin:0 0 18px; font-size:14px}
+  a{color:var(--link)}
+  p{margin:11px 0}
+  .lead{font-size:15px}
+  .nav{display:flex; gap:18px; flex-wrap:wrap; font-size:14px; margin:14px 0 8px; padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+  .note{background:#11181a; border-left:3px solid var(--accent); padding:10px 14px; margin:14px 0; font-size:14px; color:#cfe7ec; border-radius:0 6px 6px 0}
+  code{background:#1c1c1c; padding:1px 5px; border-radius:4px; color:#e6d28a; font-size:.92em}
+  ol{margin:11px 0; padding-left:22px} ol li{margin:7px 0}
+  .gloss{display:grid; grid-template-columns:auto 1fr; gap:9px 18px; margin:16px 0; font-size:14px; align-items:baseline}
+  .gloss code{white-space:nowrap}
+  .gloss .g{color:#cdd6d8}
+  pre.lean{background:#0a0a0a; border:1px solid var(--line); border-radius:8px; padding:15px 17px;
+    overflow-x:auto; font-size:13px; line-height:1.75; white-space:pre; margin:14px 0;}
+  pre.lean .c{color:#5c6370; font-style:italic}
+  pre.lean .kw{color:var(--kw)}
+  pre.lean .ty{color:#82aaff}
+  .tok{cursor:help; border-bottom:1px dotted currentColor;}
+  .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  .viz{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin:16px 0}
+  .controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+  .controls input{width:150px; padding:9px 11px; font-size:18px; font-family:inherit;
+    background:var(--box); border:1px solid var(--line); color:#fff; border-radius:8px;}
+  .opSym{font-size:24px; color:var(--orange); width:22px; text-align:center}
+  button.go,button.nav2{padding:8px 15px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:14px;
+    border:1px solid var(--accent); background:var(--accent); color:#fff;}
+  button.nav2{background:transparent; color:var(--cyan)}
+  button.nav2:disabled{opacity:.4; cursor:not-allowed}
+  .stepline{display:flex; align-items:center; gap:14px; margin:4px 0 16px; color:var(--muted); font-size:14px}
+  .stage{display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start}
+  .vgrid{background:#000; border-radius:8px; padding:14px 18px; display:inline-block}
+  .row{display:flex; justify-content:flex-end; align-items:center}
+  .gutter{width:30px; text-align:center; font-size:21px; color:#fff; flex:0 0 30px}
+  .cbox{width:40px; height:40px; margin:3px; border-radius:5px; border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:19px; color:var(--muted);}
+  .cbox.active{border-color:var(--yellow); color:var(--yellow)}
+  .cbox.unknown{border-color:#2a2a2a; color:#555}
+  .carry{width:40px; height:18px; margin:3px; text-align:center; font-size:12px; color:var(--yellow)}
+  .hrline{height:0; border:0; border-top:2px solid #fff; margin:7px 0; width:100%}
+  .vpanel{background:#121212; border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-width:300px; font-size:13.5px;}
+  .vpanel .t{color:var(--cyan); font-weight:bold; margin-bottom:9px}
+  .vpanel .gen{color:var(--muted); margin-bottom:7px}
+  .vpanel .eq{color:var(--yellow); margin-bottom:5px}
+  .vpanel .ok{color:var(--green); font-weight:bold; margin-top:7px}
+  .vpanel .bad{color:var(--red); font-weight:bold; margin-top:7px}
+  #tip{position:absolute; display:none; max-width:440px; z-index:50; background:#000; color:#cfcfcf;
+    border:1px solid var(--accent); border-radius:8px; padding:10px 12px; font-size:12.5px; line-height:1.55;
+    box-shadow:0 6px 24px rgba(0,0,0,.6); pointer-events:none;}
+  #tip .th{color:var(--cyan); font-weight:bold; white-space:pre-wrap}
+  #tip .goal{margin-top:7px; color:#ffe14d; white-space:pre-wrap}
+  #tip .note2{margin-top:7px; color:#aaa; white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Verified Pen-and-Paper Arithmetic</h1>
+  <p class="sub">The addition and subtraction taught in school, written as programs and proven correct in Lean&nbsp;4 &middot;
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">source</a></p>
+
+  <p class="lead">Formal verification is often seen as a specialised pursuit, the preserve of researchers and
+     seasoned developers. Yet its central concern, that an implementation actually meets its specification, can be
+     raised very naturally through the first algorithms anyone learns: adding and subtracting numbers column by
+     column.</p>
+
+  <p class="lead">This page takes those two algorithms as case studies. For each one it describes the method, lets
+     you run it a step at a time, and presents a Lean&nbsp;4 proof that the method is correct for every possible
+     input, not only for the examples you happen to try. It is written so that a reader with no background in Lean
+     can still follow close to every line.</p>
+
+  <p class="lead">Where code appears, hovering over a highlighted name, symbol, or tactic shows a short explanation.
+     Inside a proof it also shows the goal that remains to be established at that point. This is a small offline
+     stand-in for the interactive view that Lean provides while one works.</p>
+
+  <div class="nav">
+    <a href="#read">Reading the code</a>
+    <a href="#repr">① Representing a number</a>
+    <a href="#add">② Vertical addition</a>
+    <a href="#sub">③ Vertical subtraction</a>
+  </div>
+
+  <!-- ===================== PRIMER ===================== -->
+  <h2 id="read">Reading the Lean code</h2>
+  <p>The code on this page is Lean 4. A small number of notations recur throughout, and the list below collects
+     them, so that the definitions and proofs can be read without any prior exposure to the language. Words such as
+     <code>induction</code>, <code>simp</code>, <code>omega</code> and <code>fin_cases</code> are <em>tactics</em>,
+     individual steps in a proof; each is described when hovered.</p>
+  <div class="gloss">
+    <code>def f := …</code><span class="g">Introduces a function or value named <code>f</code>.</span>
+    <code>theorem T : … := by …</code><span class="g">States a claim (after the colon) and gives its proof (after <code>by</code>).</span>
+    <code>Fin 10</code><span class="g">A whole number between 0 and 9. This is what we call a <code>Digit</code>.</span>
+    <code>Bool</code><span class="g">A true/false value. Here it records whether a column produced a carry or a borrow.</span>
+    <code>[]</code><span class="g">The empty list.</span>
+    <code>x :: xs</code><span class="g">A list whose first element is <code>x</code> and whose remaining elements are the list <code>xs</code>. A number is stored as such a list of digits.</span>
+    <code>| pattern =&gt; result</code><span class="g">One case of a definition: when the input has the shape <code>pattern</code>, the answer is <code>result</code>. Giving cases for <code>[]</code> and <code>x :: xs</code> is how a function over lists is defined.</span>
+    <code>d.val</code><span class="g">The plain number carried by a digit <code>d</code> (the 7 inside the digit 7).</span>
+    <code>⟨0, by omega⟩</code><span class="g">A digit written out in full: the value 0 together with a short proof (<code>by omega</code>) that it is a valid digit, that is, below 10. Because the proof travels with the value, an out-of-range digit can never be formed.</span>
+    <code>a + 10 * b, ≤</code><span class="g">Ordinary addition and multiplication, and “less than or equal to”.</span>
+    <code>⊢ …</code><span class="g">Shown in a proof tooltip. It is the statement that still remains to be proved at that point.</span>
+  </div>
+
+  <!-- ===================== FOUNDATIONS ===================== -->
+  <h2 id="repr">① Representing a number</h2>
+  <p>Before anything can be proved about an algorithm, the computer must be told what a number is. We store a number
+     as the list of its digits, least significant first, so <code>1239</code> is held as <code>[9, 3, 2, 1]</code>:
+     units, then tens, then hundreds, then thousands. Each digit is a value between 0 and 9, called a
+     <code>Digit</code>, and a list of them is a <code>MultiDigit</code>.</p>
+  <p>A single function connects this representation to ordinary numbers. <code>toNat</code> reads a digit list and
+     returns the number it denotes.</p>
+  <pre class="lean" id="reprCode"></pre>
+  <p>The second line says that the value of a list is its units digit, plus 10 times the value of everything above
+     it. This function is the thread running through the whole project, because every theorem is stated in terms of
+     <code>toNat</code>. That is how one expresses, precisely, the claim that the digit list an algorithm produces
+     denotes the right number.</p>
+  <p>The least-significant-first order is chosen because it matches the order in which the algorithms actually work,
+     the units column first, as one does by hand. This keeps both the recursion and the proofs straightforward.</p>
+  <p>Two conveniences recur, and they account for the general style of the proofs that follow. First, a digit is a
+     <code>Fin 10</code>, so it is below 10 by construction; there is no separate validity check to carry around,
+     and the few table cases that would need a digit of 10 or more are impossible and dismissed at once. Second, the
+     tactic <code>omega</code> settles routine arithmetic on its own, including bounds and carry conditions. Relying
+     on it is deliberate: it leaves each proof free to address the mathematical structure of the algorithm, the
+     induction and the place-value identity, rather than routine calculation.</p>
+
+  <!-- ===================== ADDITION ===================== -->
+  <h2 id="add">② Vertical addition</h2>
+
+  <h3>The idea</h3>
+  <p>The two numbers are lined up by their right edge and added column by column, beginning with the units. Whenever
+     a column total reaches 10 or more, its last digit is written down and a 1 is carried into the column to the
+     left. This carry is the only information that passes between columns, and it is exactly what the algorithm and
+     the proof must keep track of.</p>
+
+  <h3>The algorithm</h3>
+  <p>Addition is built in three layers, and each layer is proved correct before the next is placed on top of it.</p>
+  <ol>
+    <li>The single-digit sums. <code>addTable</code> is a lookup table covering every pair of digits from 0 to 9,
+        returning the result digit together with whether the sum carried.</li>
+    <li>One column. <code>addDigits</code> adds two digits and an incoming carry, using at most two table lookups:
+        it adds the digits, then adds one more if a carry arrived. It receives a carry and also returns one, and
+        that symmetry is what allows the single-column adders to be chained into the full algorithm, each column
+        feeding the next.</li>
+    <li>Whole numbers. <code>verticalAdd</code> walks the two digit lists together, passing the carry out of each
+        column into the next.</li>
+  </ol>
+  <pre class="lean" id="addAlgo"></pre>
+  <div class="note">The <code>0</code> and <code>1</code> above are digits; the short proofs that they lie below 10
+     are left out here for readability. When one list runs out, the algorithm continues with an implicit
+     <code>0</code>, which is how it adds numbers of different lengths and how a leftover carry can become a new
+     leading digit, as in <code>99 + 1 = 100</code>.</div>
+  <p>Lean also requires a guarantee that the recursion stops. We supply a measure, the combined length of the two
+     lists, which decreases at every recursive call, and termination follows. The same measure is used for
+     subtraction below.</p>
+
+  <h3>Try it</h3>
+  <p>Step through the algorithm with any two numbers. The highlighted columns are those processed so far. The panel
+     states the loop invariant, the relationship that holds after every column, which the proof below turns into a
+     theorem.</p>
+  <div class="viz" data-op="add">
+    <div class="controls">
+      <input class="opA" inputmode="numeric" value="1239"/><span class="opSym">+</span><input class="opB" inputmode="numeric" value="8170"/>
+      <button class="go goBtn">Go</button>
+    </div>
+    <div class="stepline"><button class="nav2 prevBtn">&larr; Prev</button><span class="stepLbl">Step 1 of 1</span><button class="nav2 nextBtn">Next &rarr;</button></div>
+    <div class="stage"><div class="vgrid"></div><div class="vpanel"></div></div>
+  </div>
+
+  <h3>Why it is correct</h3>
+  <p>The proof has the same three layers as the algorithm. <code>addTable_correct</code> checks all 100 table
+     entries by exhaustive case analysis, and <code>addDigits_correct</code> checks all 200 single-column cases the
+     same way. <code>verticalAdd_correct</code> then proceeds by induction over the digit list: assuming the
+     algorithm is already correct on the shorter tail, processing one further column, justified by
+     <code>addDigits_correct</code>, keeps it correct. The induction is the column-to-column carry argument, stated
+     precisely.</p>
+  <p>The proof brings out one point that is easy to miss. Ordinary addition always begins with no carry, yet the
+     theorem is stated for an arbitrary incoming carry. That generality is not for the caller; it is what allows the
+     induction to go through, since each recursive step passes the next column a possibly different carry, and the
+     inductive hypothesis must hold for every carry value. A short corollary, <code>verticalAdd_correct'</code>,
+     then specialises the result to the no-carry case, which is the version one uses to add two numbers from the
+     start.</p>
+  <p>The commentary inside the proof below explains each step in turn.</p>
+  <div id="proofAdd"></div>
+
+  <!-- ===================== SUBTRACTION ===================== -->
+  <h2 id="sub">③ Vertical subtraction</h2>
+
+  <h3>The idea</h3>
+  <p>Subtraction has the same column-by-column shape, but in place of a carry it uses a borrow. When the top digit
+     in a column is too small, ten is taken from the column to the left before subtracting. There is one condition
+     that addition does not have: subtraction is defined only when the top number is at least the bottom one. If it
+     were not, the result would be negative, which a list of digits cannot represent. This condition appears in the
+     proof as a hypothesis.</p>
+
+  <h3>The algorithm</h3>
+  <p>The three layers mirror addition, with a borrow in place of the carry.</p>
+  <ol>
+    <li><code>subTable</code> gives every single-digit subtraction from 0 to 9, returning the difference digit and
+        whether it borrowed.</li>
+    <li><code>subDigits</code> handles one column: two digits and an incoming borrow.</li>
+    <li><code>verticalSub</code> walks both lists, passing the borrow inward. If the top number runs out while the
+        bottom still has digits, the precondition has been broken and it returns the empty list.</li>
+  </ol>
+  <pre class="lean" id="subAlgo"></pre>
+  <div class="note">The second case, in which the top number is exhausted while the bottom still has digits, can
+     only occur when the top number is smaller than the bottom one, which breaks the precondition. The algorithm
+     returns <code>[]</code> as a marker for “undefined”, and the hypothesis <code>b ≤ a</code> in the theorem
+     ensures this case is never the genuine answer. Termination follows, as for addition, from the combined list
+     length decreasing at each call.</div>
+
+  <h3>Try it</h3>
+  <p>The panel shows subtraction's invariant. Entering a smaller top number brings the precondition,
+     <code>minuend ≥ subtrahend</code>, into play.</p>
+  <div class="viz" data-op="sub">
+    <div class="controls">
+      <input class="opA" inputmode="numeric" value="714"/><span class="opSym">−</span><input class="opB" inputmode="numeric" value="93"/>
+      <button class="go goBtn">Go</button>
+    </div>
+    <div class="stepline"><button class="nav2 prevBtn">&larr; Prev</button><span class="stepLbl">Step 1 of 1</span><button class="nav2 nextBtn">Next &rarr;</button></div>
+    <div class="stage"><div class="vgrid"></div><div class="vpanel"></div></div>
+  </div>
+
+  <h3>Why it is correct</h3>
+  <p>The proof follows the recursive structure of the algorithm closely. The single-column facts are settled case by
+     case, and <code>verticalSub_correct</code> is then proved by induction. The point that distinguishes it from
+     addition is that the precondition <code>b ≤ a</code> has to be re-established for each recursive call, which is
+     the purpose of the small <code>hpre</code> sub-proofs. This is what ensures the borrow passed inward never asks
+     a column to subtract more than it holds. The line-by-line commentary in the proof follows.</p>
+  <div id="proofSub"></div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ae = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function clean(s){ s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,""); return s===""?"0":s; }
+function digitAt(str,col){ const i=str.length-1-col; return (i>=0)?+str[i]:0; }
+function computeAdd(aStr,bStr){
+  let i=aStr.length-1,j=bStr.length-1,carry=0,c=0; const result=[],carryInto=[];
+  while(i>=0||j>=0||carry>0){ carryInto[c]=carry;
+    const s=(i>=0?+aStr[i]:0)+(j>=0?+bStr[j]:0)+carry; result[c]=s%10; carry=Math.floor(s/10); i--;j--;c++; }
+  if(c===0){ result[0]=0; carryInto[0]=0; c=1; } return {N:c,result,carryInto};
+}
+function computeSub(aStr,bStr){
+  const N=Math.max(aStr.length,bStr.length);
+  let i=aStr.length-1,j=bStr.length-1,borrow=0,c=0; const result=[],borrowInto=[];
+  while(c<N){ borrowInto[c]=borrow;
+    let d=(i>=0?+aStr[i]:0)-(j>=0?+bStr[j]:0)-borrow; if(d<0){d+=10;borrow=1;}else borrow=0;
+    result[c]=d; i--;j--;c++; } return {N,result,borrowInto};
+}
+function initViz(root){
+  const op=root.dataset.op, q=sel=>root.querySelector(sel);
+  const elA=q(".opA"),elB=q(".opB"),elGo=q(".goBtn"),elPrev=q(".prevBtn"),elNext=q(".nextBtn"),
+        elLbl=q(".stepLbl"),elGrid=q(".vgrid"),elPanel=q(".vpanel");
+  const S={a:"0",b:"0",step:0,N:1,data:null,ok:true,msg:""};
+  function recompute(){
+    S.a=clean(elA.value); S.b=clean(elB.value);
+    if(op==="sub" && BigInt(S.a)<BigInt(S.b)){
+      S.ok=false; S.msg="Subtraction is defined only when the minuend is at least the subtrahend (a ≥ b). Enter a ≥ b.";
+      S.data=null; S.N=1; S.step=0; return;
+    }
+    S.ok=true; S.msg=""; S.data=(op==="add")?computeAdd(S.a,S.b):computeSub(S.a,S.b);
+    S.N=S.data.N; if(S.step>=S.N)S.step=S.N-1; if(S.step<0)S.step=0;
+  }
+  const cells=(g,arr)=>{ let h=`<div class="row"><div class="gutter">${g}</div>`;
+    for(const c of arr) h+=`<div class="cbox ${c.cls||''}">${c.t}</div>`; return h+`</div>`; };
+  function carryRow(){ const d=S.data; let h=`<div class="row"><div class="gutter"></div>`;
+    for(let col=S.N-1;col>=0;col--){ const show=(op==="add"?d.carryInto[col]:d.borrowInto[col])&&col<=S.step;
+      h+=`<div class="carry">${show?"1":""}</div>`; } return h+`</div>`; }
+  function pref(str,k){ const s=str.slice(-k); return BigInt(s===""?"0":s); }
+  function rStr(){ const d=S.data; let s=""; for(let c=d.N-1;c>=0;c--)s+=d.result[c]; return s.replace(/^0+(?=\d)/,""); }
+  function renderGrid(){
+    if(!S.ok){ elGrid.innerHTML=`<div style="color:var(--red);max-width:300px">${S.msg}</div>`; return; }
+    const d=S.data,aC=[],bC=[],rC=[];
+    for(let col=S.N-1;col>=0;col--){ const act=col<=S.step?"active":"";
+      aC.push({t:digitAt(S.a,col),cls:act}); bC.push({t:digitAt(S.b,col),cls:act});
+      rC.push(col<=S.step?{t:d.result[col],cls:"active"}:{t:"?",cls:"unknown"}); }
+    elGrid.innerHTML=carryRow()+cells("",aC)+cells(op==="add"?"+":"−",bC)+`<div class="hrline"></div>`+cells("",rC);
+  }
+  function renderPanel(){
+    if(!S.ok){ elPanel.innerHTML=`<div class="bad">${S.msg}</div>`; return; }
+    const d=S.data,k=S.step+1,pa=pref(S.a,k),pb=pref(S.b,k),pr=pref(rStr(),k),pv=10n**BigInt(k);
+    let h=`<div class="t">Invariant after step ${k}:</div>`;
+    if(op==="add"){ const cy=BigInt(d.carryInto[k]||0),L=pa+pb,R=pr+cy*pv;
+      h+=`<div class="gen">a[0..${k-1}] + b[0..${k-1}] = result[0..${k-1}] + carry × 10<sup>${k}</sup></div>`;
+      h+=`<div class="eq">${pa} + ${pb} = ${L}</div><div class="eq">${pr} + ${cy} × ${pv} = ${R}</div>`;
+      h+=(L===R)?`<div class="ok">✓ Invariant holds</div>`:`<div class="bad">✗ violated</div>`;
+    } else { const bo=BigInt(d.borrowInto[k]||0),L=pa+bo*pv,R=pr+pb;
+      h+=`<div class="gen">a[0..${k-1}] + borrow × 10<sup>${k}</sup> = result[0..${k-1}] + b[0..${k-1}]</div>`;
+      h+=`<div class="eq">${pa} + ${bo} × ${pv} = ${pr} + ${pb}</div><div class="eq">${L} = ${R}</div>`;
+      h+=(L===R)?`<div class="ok">✓ Invariant holds</div>`:`<div class="bad">✗ violated</div>`;
+    }
+    elPanel.innerHTML=h;
+  }
+  function render(){ renderGrid(); renderPanel();
+    elLbl.textContent=S.ok?`Step ${S.step+1} of ${S.N}`:"—";
+    elPrev.disabled=!S.ok||S.step<=0; elNext.disabled=!S.ok||S.step>=S.N-1; }
+  elGo.onclick=()=>{S.step=0;recompute();render();};
+  elPrev.onclick=()=>{if(S.step>0){S.step--;render();}};
+  elNext.onclick=()=>{if(S.step<S.N-1){S.step++;render();}};
+  [elA,elB].forEach(el=>el.addEventListener("keydown",e=>{if(e.key==="Enter"){S.step=0;recompute();render();}}));
+  recompute(); render();
+}
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{ tip.innerHTML="";
+      const h=document.createElement("div"); h.className="th"; h.textContent=el.dataset.th||""; tip.appendChild(h);
+      if(el.dataset.goal){ const g=document.createElement("div"); g.className="goal"; g.textContent="⊢ "+el.dataset.goal; tip.appendChild(g); }
+      if(el.dataset.note){ const n=document.createElement("div"); n.className="note2"; n.textContent=el.dataset.note; tip.appendChild(n); }
+      tip.style.display="block"; });
+    el.addEventListener("mousemove",e=>{ const pad=14; let x=e.pageX+pad,y=e.pageY+pad;
+      const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX; if(x+w>vw)x=Math.max(8,e.pageX-w-pad);
+      tip.style.left=x+"px"; tip.style.top=y+"px"; });
+    el.addEventListener("mouseleave",()=> tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){
+  let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;
+  if(goal) s+=` data-goal="${ae(goal)}"`; if(note) s+=` data-note="${ae(note)}"`;
+  return s+`>${ae(text)}</span>`;
+}
+const C=s=>`<span class="c">${s}</span>`, K=s=>`<span class="kw">${s}</span>`, TY=s=>`<span class="ty">${s}</span>`, T=tok;
+
+function reprCode(){ return `${C("-- A digit is a number 0–9; a number is a list of digits, units first.")}
+${K("abbrev")} ${TY("Digit")}      := Fin 10
+${K("def")}    ${TY("MultiDigit")} := List Digit
+
+${C("-- Read a digit list back as the ordinary number it stands for.")}
+${K("def")} ${T("toNat","lem","toNat : MultiDigit → Nat","","Turns a units-first digit list into the natural number it represents. Every theorem in the project is stated using it.")} : MultiDigit → Nat
+  | []      => 0                       ${C("-- the empty list stands for 0")}
+  | d :: ds => d.val + 10 * toNat ds   ${C("-- units digit, plus 10 times the rest")}`; }
+
+function addAlgo(){ return `${C("-- Layer 2 — one column: two digits and an incoming carry.")}
+${K("def")} ${T("addDigits","lem","addDigits (a b : Digit) (carry : Bool) : Digit × Bool","","Adds two digits and an incoming carry with at most two table lookups, returning the result digit and the carry-out.")} (a b : Digit) (carry : Bool) : Digit × Bool :=
+  ${K("let")} (sum, c1) := ${T("addTable","lem","addTable : Digit → Digit → Digit × Bool","","The 100-entry single-digit addition table; each pair of digits maps to a result digit and a carry.")} a b      ${C("-- add the two digits")}
+  ${K("match")} carry ${K("with")}
+  | false => (sum, c1)                  ${C("-- no incoming carry, so we are done")}
+  | true  => ${K("let")} (sum', c2) := addTable sum 1   ${C("-- otherwise add the carried 1")}
+             (sum', c1 || c2)           ${C("-- carry out if either step did")}
+
+${C("-- Layer 3 — whole numbers: walk both lists, passing the carry along.")}
+${K("def")} ${T("verticalAdd","lem","verticalAdd : MultiDigit → MultiDigit → Bool → MultiDigit","","Column-wise addition of two digit lists with a running carry. A leftover carry becomes a new leading digit.")} : MultiDigit → MultiDigit → Bool → MultiDigit
+  | [],      [],      false => []        ${C("-- both lists empty, no carry left")}
+  | [],      [],      true  => [1]       ${C("-- a leftover carry becomes a new digit")}
+  | [],      b :: bs, c => ${K("let")} (d, c') := addDigits 0 b c;  d :: verticalAdd [] bs c'
+  | a :: as, [],      c => ${K("let")} (d, c') := addDigits a 0 c;  d :: verticalAdd as [] c'
+  | a :: as, b :: bs, c => ${K("let")} (d, c') := addDigits a b c;  d :: verticalAdd as bs c'`; }
+
+function subAlgo(){ return `${C("-- Layer 2 — one column: two digits and an incoming borrow.")}
+${K("def")} ${T("subDigits","lem","subDigits (a b : Digit) (borrow : Bool) : Digit × Bool","","Subtracts two digits and an incoming borrow, returning the difference digit and the borrow-out.")} (a b : Digit) (borrow : Bool) : Digit × Bool :=
+  ${K("let")} (diff, b1) := ${T("subTable","lem","subTable : Digit → Digit → Digit × Bool","","The single-digit subtraction table; each pair of digits maps to a difference digit and a borrow.")} a b
+  ${K("match")} borrow ${K("with")}
+  | false => (diff, b1)
+  | true  => ${K("let")} (diff', b2) := subTable diff 1
+             (diff', b1 || b2)
+
+${C("-- Layer 3 — whole numbers, passing the borrow along. Requires b ≤ a.")}
+${K("def")} ${T("verticalSub","lem","verticalSub : MultiDigit → MultiDigit → Bool → MultiDigit","","Column-wise subtraction with a running borrow; returns [] as a marker when the precondition b ≤ a is broken.")} : MultiDigit → MultiDigit → Bool → MultiDigit
+  | [],      [],      _      => []       ${C("-- finished")}
+  | [],      _ :: _,  _      => []       ${C("-- top exhausted, bottom remains: undefined")}
+  | a :: as, [],      borrow => ${K("let")} (d, b') := subDigits a 0 borrow;  d :: verticalSub as [] b'
+  | a :: as, b :: bs, borrow => ${K("let")} (d, b') := subDigits a b borrow;  d :: verticalSub as bs b'`; }
+
+function buildAddProof(){
+  return `<pre class="lean">${C("-- LAYER 1.  All 100 single-digit sums, checked one at a time.")}
+${K("theorem")} ${T("addTable_correct","lem","addTable_correct","(addTable a b).1.val + 10·carryVal (addTable a b).2 = a.val + b.val","Every entry of the 10×10 table records the correct digit and carry.")} (a b : Digit) :
+    (addTable a b).1.val + 10 * carryVal (addTable a b).2 = a.val + b.val := ${K("by")}
+  ${C("-- replace a and b by their concrete values (10 × 10 = 100 goals),")}
+  ${C("-- then compute each one; every case is a true equation.")}
+  ${T("fin_cases","tac","fin_cases a","100 goals, one for each (a,b) in Fin 10 × Fin 10","Replaces a : Fin 10 by its 10 possible values; done for both digits, that is 100 goals.")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("simp","tac","simp [addTable, carryVal]","each of the 100 goals becomes a true numeric statement","Unfolds the table entry and computes; every case closes on its own.")} [addTable, carryVal]
+
+${C("-- LAYER 2.  One column (two digits + incoming carry), in all 200 cases.")}
+${K("theorem")} ${T("addDigits_correct","lem","addDigits_correct","(addDigits a b c).1.val + 10·carryVal (...).2 = a.val + b.val + carryVal c","One column is correct in all 200 cases (100 digit pairs × 2 carries).")} (a b : Digit) (carry : Bool) :
+    (addDigits a b carry).1.val + 10 * carryVal (addDigits a b carry).2
+      = a.val + b.val + carryVal carry := ${K("by")}
+  ${C("-- 100 digit pairs × 2 carry values = 200 goals,")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b <;> cases carry","200 goals","")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("cases","tac","cases carry","split carry : Bool into false and true","")} carry &lt;;&gt;
+  ${C("-- each settled by direct computation.")}
+  ${T("simp_all","tac","simp_all [addDigits, addTable, carryVal]","every one of the 200 cases closes","Simplifies the assumptions and the goal together until each becomes true.")} [addDigits, addTable, carryVal]
+
+${C("-- LAYER 3.  The whole-number theorem: the algorithm computes the true sum.")}
+${C("-- The carry is kept general on purpose; that is what makes the induction work.")}
+${C("-- Ordinary addition would simply start it at false.")}
+${K("theorem")} ${T("verticalAdd_correct","lem","verticalAdd_correct","toNat (verticalAdd a b carry) = toNat a + toNat b + carryVal carry","Stated through toNat: the digit list produced denotes exactly a + b (plus the carry).")} (a b : MultiDigit) (carry : Bool) :
+    toNat (verticalAdd a b carry) = toNat a + toNat b + carryVal carry := ${K("by")}
+  ${C("-- induct on the first list a, keeping b and carry general")}
+  ${T("induction","tac","induction a generalizing b carry","two goals:  a = []   and   a = d :: ds","Induction on the first list. Generalising b and carry keeps the hypothesis usable when the next column is given a different carry.")} a generalizing b carry ${K("with")}
+  | nil =>
+      ${C("-- a is empty; now induct on b, which may still have digits")}
+      ${T("induction","tac","induction b generalizing carry","sub-cases  b = []  and  b = d :: ds","A second induction handles b being longer than a.")} b generalizing carry ${K("with")}
+      | nil =>
+          ${C("-- both lists empty: split on the carry bit and simplify")}
+          ${T("cases","tac","cases carry <;> simp [verticalAdd, carryVal]","⊢ toNat (verticalAdd [] [] carry) = 0 + 0 + carryVal carry","Result is [] with no carry, or [1] with a carry; both close by simp.")} carry &lt;;&gt; simp [verticalAdd, carryVal]
+      | cons b bs ihb =>
+          ${C("-- a empty, b has a digit: this column adds 0 to b")}
+          ${T("simp only","tac","simp only [verticalAdd, toNat]","d.val + 10 * toNat (verticalAdd [] bs c') = b.val + 10 * toNat bs + carryVal carry","Unfolds one step of each definition, exposing this column's digit and the recursive call on the tail bs.")} [verticalAdd, toNat]
+          ${C("-- record that this column, 0 + b + carry, is computed correctly")}
+          ${T("have","tac","have hcorrect := addDigits_correct ⟨0,_⟩ b carry","the single-column fact for this step","States that 0 + b + carry is handled correctly in this column.")} hcorrect := addDigits_correct ⟨0, by omega⟩ b carry
+          ${C("-- the rest of b is already correct (inductive hypothesis)")}
+          have hih := ${T("ihb","tac","ihb (addDigits ⟨0,_⟩ b carry).2","toNat (verticalAdd [] bs c') = toNat [] + toNat bs + carryVal c'","The inductive hypothesis: the algorithm is already correct on the shorter list bs. Here it is applied with c', the carry produced by the current column.")} (addDigits ⟨0, by omega⟩ b carry).2
+          ${C("-- expand both facts into plain numbers...")}
+          simp [carryVal, toNat] at *
+          ${C("-- ...and omega finishes the arithmetic")}
+          ${T("omega","tac","omega","closes the remaining arithmetic goal","Only addition and multiplication by constants remain; omega decides those.")}
+  | cons a as iha =>
+      induction b ${K("with")}
+      | nil =>
+          ${C("-- b empty, a has a digit: the mirror image of the case above")}
+          simp only [verticalAdd, toNat]
+          have hcorrect := addDigits_correct a ⟨0, by omega⟩ carry
+          have hih := iha [] (addDigits a ⟨0, by omega⟩ carry).2
+          simp [carryVal, toNat] at *
+          ${T("omega","tac","omega","closes this column's arithmetic","")}
+      | cons b bs _ =>
+          ${C("-- main case: both lists still have a digit")}
+          ${T("simp only","tac","simp only [verticalAdd, toNat]","d.val + 10 * toNat (verticalAdd as bs c') = a.val + b.val + carryVal carry + 10 * (toNat as + toNat bs)","Unfolds the goal by one step of verticalAdd and one of toNat. This peels off the current column's result digit d and leaves the recursive call verticalAdd as bs c' on the tails, so the column fact and the inductive hypothesis can act on it.")} [verticalAdd, toNat]
+          ${C("-- this column, a + b + carry, is correct")}
+          have hcorrect := ${T("addDigits_correct","lem","addDigits_correct a b carry","the single-column fact at the current digits","Used together with the inductive hypothesis below.")} a b carry
+          ${C("-- the two tails are already correct (inductive hypothesis)")}
+          have hih := ${T("iha","tac","iha bs (addDigits a b carry).2","the inductive hypothesis, on the tails","toNat (verticalAdd as bs c') = toNat as + toNat bs + carryVal c'; the rest is already correct.")} bs (addDigits a b carry).2
+          ${C("-- reduce everything to plain numbers...")}
+          simp [carryVal, toNat] at *
+          ${C("-- ...and omega closes the place-value identity")}
+          ${T("omega","tac","omega","⊢ digit value + 10·(tail sum) = a + b + carry","Combines this column with the tail to give the place-value identity.")}</pre>`;
+}
+
+function buildSubProof(){
+  return `<pre class="lean">${C("-- LAYER 1.  Every single-digit subtraction, checked against the table.")}
+${K("theorem")} ${T("subTable_correct","lem","subTable_correct","(subTable a b).1.val + b.val = a.val + 10·carryVal (subTable a b).2","Each table entry records the correct difference digit and borrow.")} (a b : Digit) :
+    (subTable a b).1.val + b.val = a.val + 10 * carryVal (subTable a b).2 := ${K("by")}
+  ${C("-- 100 goals over all digit pairs, each a true equation")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b","100 goals over all digit pairs","")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("simp","tac","simp [subTable, carryVal]","each case is a true numeric statement","")} [subTable, carryVal]
+
+${C("-- LAYER 2.  One borrow-aware column, in all 200 cases.")}
+${K("theorem")} ${T("subDigits_correct","lem","subDigits_correct","a.val + 10·carryVal out = (subDigits a b borrow).1.val + b.val + carryVal borrow","One column is correct across all 200 cases.")} (a b : Digit) (borrow : Bool) :
+    a.val + 10 * carryVal (subDigits a b borrow).2
+      = (subDigits a b borrow).1.val + b.val + carryVal borrow := ${K("by")}
+  ${C("-- 100 digit pairs × 2 borrow values = 200 goals,")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b <;> cases borrow","200 cases","")} a &lt;;&gt; fin_cases b &lt;;&gt; cases borrow &lt;;&gt;
+  ${C("-- all settled by computation.")}
+  ${T("simp_all","tac","simp_all [subDigits, subTable, carryVal]","all cases close by computation","")} [subDigits, subTable, carryVal]
+
+${C("-- LAYER 3.  The whole-number theorem. The hypothesis h is the precondition b ≤ a.")}
+${K("theorem")} ${T("verticalSub_correct","lem","verticalSub_correct","toNat (verticalSub a b borrow) + toNat b + carryVal borrow = toNat a","When b ≤ a, the output plus b (plus the borrow) recovers a exactly.")} (a b : MultiDigit) (borrow : Bool)
+    (h : toNat b + carryVal borrow ≤ toNat a) :
+    toNat (verticalSub a b borrow) + toNat b + carryVal borrow = toNat a := ${K("by")}
+  ${C("-- induct on the top number a, keeping b and borrow general")}
+  ${T("induction","tac","induction a generalizing b borrow","goals  a = []  and  a = d :: ds","Induction on the top number, generalising b and borrow.")} a generalizing b borrow ${K("with")}
+  | nil =>
+      ${C("-- a is empty; induct on b, considering every borrow value")}
+      induction b generalizing borrow ${K("with")}
+      | nil =>
+          ${C("-- both lists empty; 'at *' rewrites the hypothesis h too, not just the goal")}
+          simp only [toNat, carryVal] at *
+          ${C("-- since b ≤ a and a = 0, b is 0 as well; the result is []")}
+          ${T("cases","tac","cases borrow <;> simp_all","both lists empty","")} borrow &lt;;&gt; simp_all [verticalSub]
+      | cons b bs ihb =>
+          ${C("-- a empty but b still has digits: only possible if the precondition is broken,")}
+          ${C("-- and the hypothesis h rules this branch out")}
+          simp only [verticalSub, toNat, carryVal] at *
+          cases borrow ${K("with")} | false => ${T("omega","tac","omega","follows from h, since b ≤ 0 is impossible here","")} | true => omega
+  | cons a as iha =>
+      induction b ${K("with")}
+      | nil =>
+          ${C("-- b empty, a has a digit: subtract 0 from a, carrying the borrow")}
+          simp only [verticalSub, toNat]
+          ${C("-- this column, a - 0 with the borrow, is correct")}
+          have hcorrect := subDigits_correct a ⟨0, by omega⟩ borrow
+          ${C("-- before recursing, re-establish the precondition for the shorter lists")}
+          ${T("have","tac","have hpre : … ≤ toNat as","re-establish the precondition for the recursive call","The borrow passed inward still satisfies b ≤ a on the shorter lists; this must hold before the inductive hypothesis applies.")} hpre : toNat [] + carryVal (subDigits a ⟨0, by omega⟩ borrow).2 ≤ toNat as := ${K("by")}
+            simp [toNat, carryVal] at h ⊢; have := subDigits_correct a ⟨0, by omega⟩ borrow; simp [carryVal] at this; omega
+          ${C("-- the rest is already correct (inductive hypothesis, using hpre)")}
+          have hih := iha [] (subDigits a ⟨0, by omega⟩ borrow).2 hpre
+          simp [carryVal, toNat] at *
+          ${T("omega","tac","omega","closes this column","")}
+      | cons b bs _ =>
+          ${C("-- main case: both lists still have a digit")}
+          ${T("simp only","tac","simp only [verticalSub, toNat]","d.val + 10 * toNat (verticalSub as bs b') + (b.val + 10 * toNat bs) + carryVal borrow = a.val + 10 * toNat as","Unfolds one step of each definition, exposing this column's difference digit d and the recursive call verticalSub as bs b' on the tails.")} [verticalSub, toNat]
+          ${C("-- this column, a - b with the borrow, is correct")}
+          have hcorrect := ${T("subDigits_correct","lem","subDigits_correct a b borrow","the single-column fact at the current digits","Borrow-aware difference for this column.")} a b borrow
+          ${C("-- re-establish the precondition for the recursive call")}
+          have hpre : toNat bs + carryVal (subDigits a b borrow).2 ≤ toNat as := ${K("by")}
+            simp [toNat, carryVal] at h ⊢; have := subDigits_correct a b borrow; simp [carryVal] at this; omega
+          ${C("-- the tails are already correct (inductive hypothesis)")}
+          have hih := ${T("iha","tac","iha bs (subDigits a b borrow).2 hpre","the inductive hypothesis on the tails","The rest is already correct, given the borrow passed in and the re-established precondition.")} bs (subDigits a b borrow).2 hpre
+          ${C("-- expand to plain numbers; hcorrect and hih together let omega finish")}
+          simp [carryVal, toNat] at *
+          ${T("omega","tac","omega","⊢ combines column and tail into  result + b + borrow = a","Place-value bookkeeping over the column fact and the inductive hypothesis.")}</pre>`;
+}
+
+$("reprCode").innerHTML=reprCode();
+$("addAlgo").innerHTML=addAlgo();
+$("subAlgo").innerHTML=subAlgo();
+$("proofAdd").innerHTML=buildAddProof();
+$("proofSub").innerHTML=buildSubProof();
+document.querySelectorAll(".viz").forEach(initViz);
+bindTips();
+</script>
+</body>
+</html>

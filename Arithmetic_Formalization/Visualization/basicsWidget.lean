@@ -36,10 +36,8 @@ def numberRow (a : MultiDigit) : Html :=
 
 #html numberRow [⟨1, by omega⟩, ⟨2, by omega⟩, ⟨3, by omega⟩]
 
-def fromNat : Nat → MultiDigit
-  | 0 => []
-  | n + 1 => ⟨(n + 1) % 10, by omega⟩ :: fromNat ((n + 1) / 10)
-termination_by n => n
+-- `fromNat` and `toNat_fromNat` now live in Foundations; this file gets them
+-- through its import of Foundations.
 
 def digitBoxActive (d : Nat) : Html :=
   Html.element "div"

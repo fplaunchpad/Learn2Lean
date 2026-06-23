@@ -201,6 +201,10 @@ def altSumDivisVisualizer (a : MultiDigit) (step : Nat) : Html :=
 #html digitSumDivisVisualizer [⟨4, by omega⟩, ⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩] 3 3
 
 -- 1234, divisibility by 9
+
+#html digitSumDivisVisualizer [⟨4, by omega⟩, ⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩] 9 0
+#html digitSumDivisVisualizer [⟨4, by omega⟩, ⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩] 9 1
+#html digitSumDivisVisualizer [⟨4, by omega⟩, ⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩] 9 2
 #html digitSumDivisVisualizer [⟨4, by omega⟩, ⟨3, by omega⟩, ⟨2, by omega⟩, ⟨1, by omega⟩] 9 3
 
 -- 1234, divisibility by 11 (E = 4+2 = 6, O = 3+1 = 4, value % 11 = 2 = 6 − 4)
