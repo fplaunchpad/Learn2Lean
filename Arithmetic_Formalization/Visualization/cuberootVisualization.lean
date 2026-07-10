@@ -42,7 +42,7 @@ def crLine (color : String) (txt : String) : Html :=
 -- step 0 = units digit, step 1 = tens digit, step 2 = combined result.
 def cubeRootVisualizer (n : MultiDigit) (step : Nat) : Html :=
   let cubeVal   := toNat n
-  let c         := unitsDigit n               -- units digit of the cube
+  let c         := cubeVal % 10               -- units digit of the cube
   let (u, t)    := cubeRootTrick n            -- the actual algorithm
   let rootUnits := u.val
   let rootTens  := t.val

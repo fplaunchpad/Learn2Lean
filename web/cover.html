@@ -15,7 +15,8 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.65}
   .wrap{max-width:780px;margin:0 auto;padding:54px 22px 90px}
-  h1{font-size:40px;margin:0 0 2px;color:#fff;line-height:1.1;letter-spacing:-.01em}
+  .brand{font-family:var(--ui);font-size:clamp(46px,11vw,72px);font-weight:800;line-height:1.02;letter-spacing:-.025em;color:#fff;margin:0 0 8px}
+  .brand span{color:var(--cyan)}
   .tagline{color:#fff;font-size:19px;margin:0 0 10px}
   .sub{color:var(--muted);margin:0 0 26px;font-size:15px}
   a{color:var(--link)} p{margin:11px 0} .lead{font-size:15px}
@@ -44,7 +45,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Learn2Lean</h1>
+  <h1 class="brand">Learn<span>2</span>Lean</h1>
   <p class="tagline">Verified Pen-and-Paper Arithmetic</p>
   <p class="sub">The arithmetic you learned in school, written as programs and proved correct in Lean&nbsp;4.</p>
 
