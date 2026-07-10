@@ -1,0 +1,136 @@
+/* ==========================================================================
+   book.css — shared design layer for every chapter.
+   Loaded AFTER each page's inline <style>, so rules here win ties.
+   Pure CSS: works with JavaScript disabled.
+   ========================================================================== */
+
+/* ---- typography: prose in a reading face, code and digits in mono ---- */
+:root{
+  --serif:Charter,'Bitstream Charter','Iowan Old Style',Georgia,'Times New Roman',serif;
+  --ui:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --muted:#9a9a9a;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--serif);font-size:16.5px;line-height:1.72}
+h1{font-family:var(--ui);font-size:30px;letter-spacing:-.01em}
+h2{font-family:var(--ui);font-size:21px;scroll-margin-top:60px}
+h3{font-family:var(--ui);font-size:16px}
+.sub{font-size:14.5px}
+code{font-size:.84em;font-family:var(--mono)}
+button,input,select,.tag,.wkind,.whead,.wstoolbar,.wsstatus,.pager,.controls,.nav,.fb{font-family:var(--ui)}
+.board,.worked,.panel,.ipanel,.stepdetail,.out,pre,textarea.led,input.num,.lawcard .eq,.modlaws{font-family:var(--mono)}
+ul.steps{font-family:var(--mono);font-size:12.5px}
+.note,.recall{font-size:14px}
+.board{overflow-x:auto;max-width:100%}
+:is(a,button,input,textarea,summary,.tok):focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ---- sticky section nav (injected by book.js) ---- */
+.topnav{position:sticky;top:0;z-index:40;background:rgba(13,13,13,.93);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);font-family:var(--ui)}
+.topnav .tn{max-width:820px;margin:0 auto;padding:9px 22px;display:flex;align-items:center;gap:13px;font-size:13px;flex-wrap:wrap}
+.topnav a{text-decoration:none;color:var(--muted)}
+.topnav a.brand{color:#fff;font-weight:700;letter-spacing:.02em;margin-right:2px}
+.topnav a.brand:hover{color:var(--cyan)}
+.topnav a.home{color:var(--link)}
+.topnav a.sec:hover{color:#fff}
+.topnav a.sec.on{color:var(--yellow)}
+.topnav .chip{margin-left:auto;color:var(--muted);font-size:12px}
+
+/* ---- chapter meta, objectives, hint bar (injected) ---- */
+.meta{display:flex;gap:14px;align-items:center;color:var(--muted);font-family:var(--ui);font-size:13px;margin:2px 0 6px}
+.meta .dots{letter-spacing:2px;color:var(--green)}
+.objectives{background:#0f1a14;border:1px solid #1d3a2a;border-radius:10px;padding:13px 18px;margin:16px 0;font-size:15px}
+.objectives .ot{font-family:var(--ui);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin-bottom:7px}
+.objectives ul{margin:0;padding-left:20px} .objectives li{margin:4px 0}
+.hintbar{font-family:var(--ui);font-size:13px;color:#aee3ec;background:#0c1416;border:1px dashed var(--accent);border-radius:8px;padding:8px 12px;margin:14px 0}
+.paradigm{font-family:var(--ui);font-size:13px;color:#bfe3c9;background:#0f1a14;border:1px solid #1d3a2a;border-radius:8px;padding:8px 13px;margin:12px 0}
+.paradigm span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin-right:8px;font-weight:700}
+
+/* ---- end-of-chapter summary + next-up (injected) ---- */
+.summary{background:#0f1a14;border:1px solid #1d3a2a;border-radius:10px;padding:14px 18px;margin:26px 0 6px;font-size:15px}
+.summary .st{font-family:var(--ui);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin-bottom:7px}
+.summary ul{margin:0;padding-left:20px} .summary li{margin:4px 0}
+.nextup{display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:14px 0;text-decoration:none;font-family:var(--ui)}
+.nextup:hover{border-color:var(--accent)}
+.nextup .nu{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.nextup .nt{color:#fff;font-size:15px;margin-top:2px}
+
+/* ---- quiz progress badge ---- */
+.quizprog{font-family:var(--ui);font-size:12px;color:#0d0d0d;background:var(--yellow);border-radius:20px;padding:2px 10px;font-weight:700;vertical-align:3px;margin-left:10px}
+
+/* ---- tap-to-pin tooltips ---- */
+.tok.pinned{background:#132428;border-radius:3px}
+
+/* ---- invariant panel: equation flash on every step ---- */
+@keyframes eqflash{0%{background:#3a3300}100%{background:transparent}}
+.ipanel .ieq{animation:eqflash .9s ease-out}
+
+/* ---- collapsible proof layers ---- */
+details.layer{margin:22px 0}
+details.layer>summary{cursor:pointer;list-style:none;user-select:none}
+details.layer>summary::-webkit-details-marker{display:none}
+details.layer>summary .pstep{margin:0;display:inline}
+details.layer>summary::before{content:"▸ ";color:var(--cyan)}
+details.layer[open]>summary::before{content:"▾ ";color:var(--cyan)}
+
+/* ---- proof modules: an "idea" always shown, the Lean folded underneath ---- */
+.ideas{background:#0f1a14;border:1px solid #1d3a2a;border-radius:8px;padding:12px 15px;margin:8px 0}
+.ideas .ideas-h{font-family:var(--ui);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--green);margin-bottom:6px}
+.ideas p{margin:6px 0;font-size:14.5px}
+.leandrop{margin:6px 0 20px;border-left:2px solid var(--line);padding-left:12px}
+.leandrop summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content;font-family:var(--ui)}
+.leandrop summary::-webkit-details-marker{display:none}
+.leandrop summary::before{content:"▸ show the Lean proof"}
+.leandrop[open] summary::before{content:"▾ hide the Lean proof"}
+.leandrop pre.lean{margin:8px 0 0}
+
+/* ---- reference drawer: in-page cheatsheet, launched from the top nav ---- */
+.refbtn{cursor:pointer;background:var(--panel);border:1px solid var(--line);color:var(--cyan);border-radius:7px;padding:3px 10px;font-size:12.5px;margin-left:auto}
+.refbtn:hover{border-color:var(--accent)}
+.topnav .chip{margin-left:10px}   /* Reference button now takes the auto margin */
+.drawer-scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+.drawer-scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,93vw);z-index:61;background:#0f0f0f;border-left:1px solid var(--line);box-shadow:-8px 0 30px rgba(0,0,0,.5);transform:translateX(101%);transition:transform .22s ease;overflow-y:auto;font-family:var(--ui)}
+.drawer.open{transform:none}
+.drawer-h{position:sticky;top:0;background:#0f0f0f;border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+.drawer-h b{font-size:15px}
+.drawer-sub{color:var(--muted);font-size:11.5px;flex:1;line-height:1.3}
+.drawer-x{cursor:pointer;background:none;border:none;color:var(--muted);font-size:16px;padding:2px 6px;line-height:1}
+.drawer-x:hover{color:#fff}
+.drawer-body{padding:4px 16px 40px}
+.drawer-body h4{font-family:var(--ui);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--green);margin:18px 0 6px}
+table.cheat{width:100%;border-collapse:collapse;font-size:13px}
+table.cheat td{border-bottom:1px solid #1b1b1b;padding:6px 5px;vertical-align:top}
+table.cheat td.ct,table.cheat td.cs{white-space:nowrap;color:var(--cyan)}
+table.cheat td.cd{color:#cfcfcf;line-height:1.45}
+table.cheat td.cc{color:var(--muted);font-size:11px;white-space:nowrap;text-align:right}
+
+/* ---- worksheet checker status ---- */
+.chkbanner{font-family:var(--ui);font-size:13.5px;border-radius:8px;padding:9px 13px;margin:10px 0;border:1px solid var(--line);color:var(--muted)}
+.chkbanner.on{color:#9fdca8;border-color:#1d3a2a;background:#0f1a14}
+.chkbanner.off{color:#f0c187;border-color:#3a2a10;background:#1a1408}
+
+/* ---- graduated worksheet hints (reveal one at a time) ---- */
+.whints{margin:8px 14px 0}
+.whint{margin:4px 0;font-family:var(--ui)}
+.whint summary{cursor:pointer;color:var(--yellow);font-size:12.5px;list-style:none;user-select:none;width:max-content}
+.whint summary::-webkit-details-marker{display:none}
+.whint summary::before{content:"💡 "}
+.whint>div{font-size:13.5px;color:#e8d9b0;margin:5px 0 2px;padding-left:18px;max-width:560px;line-height:1.5}
+.whint>div code{color:#ffe08a}
+
+/* ---- back to top ---- */
+#btt{position:fixed;right:18px;bottom:18px;z-index:45;display:none;border-radius:50%;width:42px;height:42px;font-size:18px;line-height:1;padding:0}
+#btt.show{display:block}
+
+/* ---- cover: visited badge ---- */
+.badge.visit{background:#173042;color:#9fd7ea;margin-right:6px}
+
+/* ---- motion & print ---- */
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+@media print{
+  body{background:#fff;color:#111}
+  .topnav,.controls,.wstoolbar,.wbar,#btt,.hintbar,.pager,.chkbanner{display:none!important}
+  pre.lean,.note,.recall,.stage,.ex,.objectives,.summary{background:#fff;color:#111;border-color:#999}
+  a{color:#111}
+}

@@ -147,7 +147,7 @@ theorem subDigits_correct (a b : Digit) (borrow : Bool) :
   -- by exhaustive case analysis and simplification.
   simp_all [subDigits, subTable, carryVal]
 
-  --Similar to adddition we now need a function that subtracts
+  --Similar to addition we now need a function that subtracts
   --two numbers similar to how we do it column wise
   --on pen and paper
 
@@ -163,9 +163,11 @@ def verticalSub : MultiDigit → MultiDigit → Bool → MultiDigit
       -- Return empty list as sentinel for undefined result
       []
   | [], _ :: _, _ =>
-      -- First number exhausted but second still has digits
-      -- This means a < b -- precondition violated
-      -- Return empty list as sentinel for undefined result
+      -- First number exhausted but second still has digits.
+      -- Reached either when a < b (precondition violated), or when the
+      -- remaining digits of b are all zeros — in which case [] (value 0)
+      -- is the correct answer. Under the theorem's hypothesis the
+      -- remaining value of b is forced to 0, so [] is always honest there.
       []
   | a :: as, [], borrow =>
   --Lean syntax note:

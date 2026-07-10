@@ -94,59 +94,6 @@ def findCubeTensHelper (upper : Nat) : Nat → Digit
       else
         ⟨0, by omega⟩
 
--- Correctness: the returned digit d satisfies d³ ≤ upper
-theorem findCubeTensHelper_correct (upper : Nat) (k : Nat) :
-    let d := findCubeTensHelper upper k
-    cubeTable d ≤ upper := by
-  induction k with
-  | zero => simp [findCubeTensHelper, cubeTable]
-  | succ k ih =>
-    simp only [findCubeTensHelper]
-    split
-    · rename_i h
-      split
-      · rename_i h_le
-        -- candidate d+1 satisfies the bound — return it
-        exact h_le
-      · -- candidate failed, recurse; IH closes it
-        exact ih
-    · -- d+1 ≥ 10: return 0, cubeTable 0 = 0 ≤ upper
-      simp [cubeTable]
-
--- Maximality: any digit strictly larger than the result
--- has cube strictly greater than upper
-theorem findCubeTensHelper_maximal (upper : Nat) :
-    ∀ start, start < 10 → ∀ y, y < 10 →
-      (findCubeTensHelper upper start).val < y → y ≤ start →
-      upper < y ^ 3 := by
-  intro start
-  induction start with
-  | zero =>
-    -- res = 0, so y > 0 and y ≤ 0 contradict
-    intro _ y _ hy hyle
-    omega
-  | succ k ih =>
-    intro hstart y hy10 hy hyle
-    simp only [findCubeTensHelper] at hy
-    split at hy
-    · rename_i h
-      -- bridge cubeTable lookup to plain (k+1)³ for arithmetic
-      have hcube : cubeTable ⟨k + 1, h⟩ = (k + 1) ^ 3 := cubeTable_correct ⟨k + 1, h⟩
-      split at hy
-      · -- inner if true: res = k+1, so y > k+1 contradicts y ≤ k+1
-        have hval : (⟨k + 1, h⟩ : Digit).val = k + 1 := rfl
-        omega
-      · -- inner if false: (k+1)³ > upper, so any y ≥ k+1 also fails
-        rename_i h_nle
-        have h_nle' : upper < (k + 1) ^ 3 := by rw [← hcube]; omega
-        rcases Nat.lt_or_ge y (k + 1) with hyk | hyk
-        · -- y < k+1: not yet tried, recurse into IH
-          exact ih (by omega) y hy10 hy (by omega)
-        · -- y = k+1: exactly the candidate that just failed
-          have hye : y = k + 1 := by omega
-          subst hye; exact h_nle'
-    · -- k+1 ≥ 10: impossible since start < 10
-      rename_i h; omega
 
 
 -- Top-level tens digit finder
@@ -158,14 +105,6 @@ def cubeTensDigit (n : MultiDigit) : Digit :=
 
 -- Main function: the cube root trick
 -- Returns (units digit of root, tens digit of root)
-
--- We require
--- The units digit — the least significant digit.
--- This is just the head of the LSB-first list.
-def unitsDigit (a : MultiDigit) : Nat :=
-  match a with
-  | []     => 0
-  | d :: _ => d.val
 
 def cubeRootTrick (n : MultiDigit) : Digit × Digit :=
   let u := match n with
@@ -226,6 +165,61 @@ theorem cubeRootTrick_correct1 (m : Nat) (hm : m ≤ 99) :
 -- well-founded recursion and so doesn't reduce under the kernel's `decide`.
 
 --the second approach is more involved
+
+-- Correctness : the returned digit d satisfies d³ ≤ upper
+theorem findCubeTensHelper_correct (upper : Nat) (k : Nat) :
+    let d := findCubeTensHelper upper k
+    cubeTable d ≤ upper := by
+  induction k with
+  | zero => simp [findCubeTensHelper, cubeTable]
+  | succ k ih =>
+    simp only [findCubeTensHelper]
+    split
+    · rename_i h
+      split
+      · rename_i h_le
+        -- candidate d+1 satisfies the bound — return it
+        exact h_le
+      · -- candidate failed, recurse; IH closes it
+        exact ih
+    · -- d+1 ≥ 10: return 0, cubeTable 0 = 0 ≤ upper
+      simp [cubeTable]
+
+-- Maximality: any digit strictly larger than the result
+-- has cube strictly greater than upper
+theorem findCubeTensHelper_maximal (upper : Nat) :
+    ∀ start, start < 10 → ∀ y, y < 10 →
+      (findCubeTensHelper upper start).val < y → y ≤ start →
+      upper < y ^ 3 := by
+  intro start
+  induction start with
+  | zero =>
+    -- res = 0, so y > 0 and y ≤ 0 contradict
+    intro _ y _ hy hyle
+    omega
+  | succ k ih =>
+    intro hstart y hy10 hy hyle
+    simp only [findCubeTensHelper] at hy
+    split at hy
+    · rename_i h
+      -- bridge cubeTable lookup to plain (k+1)³ for arithmetic
+      have hcube : cubeTable ⟨k + 1, h⟩ = (k + 1) ^ 3 := cubeTable_correct ⟨k + 1, h⟩
+      split at hy
+      · -- inner if true: res = k+1, so y > k+1 contradicts y ≤ k+1
+        have hval : (⟨k + 1, h⟩ : Digit).val = k + 1 := rfl
+        omega
+      · -- inner if false: (k+1)³ > upper, so any y ≥ k+1 also fails
+        rename_i h_nle
+        have h_nle' : upper < (k + 1) ^ 3 := by rw [← hcube]; omega
+        rcases Nat.lt_or_ge y (k + 1) with hyk | hyk
+        · -- y < k+1: not yet tried, recurse into IH
+          exact ih (by omega) y hy10 hy (by omega)
+        · -- y = k+1: exactly the candidate that just failed
+          have hye : y = k + 1 := by omega
+          subst hye; exact h_nle'
+    · -- k+1 ≥ 10: impossible since start < 10
+      rename_i h; omega
+
 
 -- If a³ ≤ upper < (a+1)³ with a a digit, the search returns exactly a.
 -- This is where findCubeTensHelper_correct (lower bound) and

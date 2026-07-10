@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Long Multiplication — described, implemented, visualised, proved</title>
+<meta name="description" content="Long multiplication in Lean 4: the times table, partial products and shifts, proved correct on top of verified addition."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✖</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:6px 0}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:110px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .opSym{color:var(--orange);font-size:18px}
+  .board{display:flex;flex-direction:column;align-items:flex-end;width:max-content;background:#000;border-radius:8px;padding:12px 16px;overflow-x:auto;max-width:100%}
+  .row{display:flex;justify-content:flex-end;align-items:center}
+  .gut{width:22px;text-align:center;color:#fff;font-size:18px}
+  .cell{width:32px;height:32px;margin:2px;border-radius:5px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px;color:#ccc}
+  .cell.act{border-color:var(--yellow);color:var(--yellow)} .cell.tot{border-color:var(--green);color:var(--green)} .cell.blank{border:none}
+  .mcar{width:32px;height:16px;margin:2px;text-align:center;font-size:11px;line-height:16px;color:var(--yellow)}
+  .hr{height:0;border:0;border-top:2px solid #fff;margin:6px 0;width:100%}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:15px;word-break:break-word}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:15px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:430px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .recall{background:#15110a;border-left:3px solid var(--orange);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#ecdcc7;border-radius:0 6px 6px 0}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .small{font-size:13px;color:var(--muted)}
+  .worked{display:grid;grid-template-columns:auto 22px repeat(3,30px);align-items:center;width:max-content;background:#000;border:1px solid var(--line);border-radius:10px;padding:14px 22px 16px;margin:16px auto;font-size:23px;font-variant-numeric:tabular-nums}
+  ul.steps{font-size:13px;color:var(--muted);margin:10px 0;padding-left:20px}
+  ul.steps li{margin:4px 0}
+  .worked span{text-align:center}
+  .worked .lbl{font-size:11px;color:var(--muted);text-align:right;padding-right:14px}
+  .worked .op{color:var(--orange)} .worked .s{color:var(--green);font-weight:600}
+  .worked .shift{color:var(--cyan);font-weight:600}
+  .worked .rule{grid-column:2 / -1;height:0;border-top:2px solid #fff;margin:6px 0}
+  textarea.led{width:100%;min-height:54px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin-top:10px;font-size:13.5px;color:#cfe7ec;max-width:520px}
+  .stepdetail b{color:var(--yellow)}
+  pre.lean .ph{color:var(--yellow)}
+  /* ---- notebook worksheet ---- */
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a> · <a href="prologue.html">Ch 0</a> · <a href="addition.html">Ch 1</a> · <a href="subtraction.html">Ch 2</a></p>
+  <h1>Long Multiplication</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <div class="recall">This chapter leans on <a href="addition.html">Vertical Addition</a>, and the debt is more than
+     analogy: long multiplication is <em>built out of</em> addition. It adds many shifted copies of one number, and the
+     code below literally calls <code>addTable</code> and <code>verticalAdd</code> from that chapter. Get comfortable
+     with the carry and the three-layer idea there before you start here.</div>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the algorithm does</h2>
+  <p>To multiply two numbers by hand you break the second number apart, one digit at a time. You multiply the whole
+     top number by each digit of the bottom number in turn, producing a <strong>partial product</strong>. Because a
+     bottom digit in the tens place is really worth ten times its face value, its partial product is
+     <strong>shifted</strong> one place to the left; the hundreds digit's is shifted two; and so on. Finally you
+     <strong>add</strong> all the shifted partial products together.</p>
+  <p>Multiplication, then, is three moves built on arithmetic you already have: the single-digit times table, a
+     way to multiply a whole number by one digit (carrying as you go), and plain column addition to total the partial
+     products. That last step isn't merely similar to the addition chapter; it <em>is</em> the addition chapter,
+     called as a subroutine.</p>
+  <div class="note"><b>Why not just repeat addition?</b> Multiplication really is repeated addition — <code>23 × 14</code>
+     is twenty-three added to itself fourteen times — and we could define it that way in one line. But you never
+     computed like that on paper, and neither will we (see <a href="prologue.html#repr">the prologue's note on this</a>).
+     The whole point is to verify the <em>method you were taught</em>: the memorised times table, digit-by-digit
+     multiplication with carries, shifts for place value, and a final column addition. So that is what the code does.</div>
+  <p>Take <code>23 × 14</code>. Multiply 23 by each digit of 14 in turn; the tens digit's partial product is
+     <span style="color:var(--cyan)">shifted</span> one place left (a trailing zero), then the two are added.</p>
+  <div class="worked" role="img" aria-label="23 times 14 equals 322, via partial products 92 and 230">
+    <span class="lbl"></span><span></span><span></span><span>2</span><span>3</span>
+    <span class="lbl"></span><span class="op">×</span><span></span><span>1</span><span>4</span>
+    <span class="rule"></span>
+    <span class="lbl">23 × 4</span><span></span><span></span><span>9</span><span>2</span>
+    <span class="lbl">23 × 1</span><span></span><span>2</span><span>3</span><span class="shift">0</span>
+    <span class="rule"></span>
+    <span class="lbl"></span><span></span><span class="s">3</span><span class="s">2</span><span class="s">2</span>
+  </div>
+  <ul class="steps">
+    <li>23 × 4 = 92.</li>
+    <li>23 × 1 = 23, shifted one place to become 2 3 <span style="color:var(--cyan)">0</span> — the
+        <span style="color:var(--cyan)">0</span> is the shift, the reason a tens digit is worth ten times its face value.</li>
+    <li>Add the partial products: 92 + 230 = <span style="color:var(--green)">322</span>.</li>
+  </ul>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>The build has three layers, each resting on the one below. The bottom of the stack reaches back into the
+     addition chapter.</p>
+  <div id="mulImpl"></div>
+  <div class="note">The digits <code>0</code> and <code>1</code> above are written plainly; the short proofs that
+     they lie below 10 are left out for readability. <code>shiftLeft</code> prepends <code>n</code> zeros to the list.
+     The list is least-significant-first, so a zero at the head of the list is a zero at the <em>END</em> of the
+     written number — §1's trailing zero, a factor of ten. Termination of <code>mulDigit</code> follows from the digit list getting shorter at each call.</div>
+
+  <!-- 3. VISUALIZATION -->
+  <h2>3 · See it run — partial products and their sum</h2>
+  <p>Step through one partial product at a time. Each new row is the top number times one digit of the bottom number,
+     slid into its place. The panel tracks the identity the whole algorithm rests on.</p>
+  <div class="stage">
+    <div class="controls">
+      <input class="num" id="opA" value="123"/><span class="opSym">×</span><input class="num" id="opB" value="45"/>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="srow">
+      <div class="board" id="board"></div>
+      <div class="ipanel" id="ipanel"></div>
+    </div>
+    <div class="stepdetail" id="detail"></div>
+  </div>
+  <p>Every partial product is the top number times one bottom digit <code>bᵢ</code>, and because that digit sits in
+     place <em>i</em> it is worth <code>10ⁱ</code> times its face value. So the answer is the sum of those shifted
+     pieces:</p>
+  <p style="text-align:center;color:var(--yellow)">a × b = Σᵢ (a × bᵢ) × 10ⁱ.</p>
+  <p>That one distributive identity — multiplication spread across the digits of <code>b</code>, each at its own
+     place value — is the whole reason the method works, and it is exactly what the final theorem states. The
+     carries inside one partial product, and the carries inside the final addition, all exist to compute
+     this sum with digits that never exceed nine.</p>
+
+  <h3>Predict one table entry</h3>
+  <p>A single lookup in <code>mulTable</code> returns the <code>(units, tens)</code> of a one-digit product. What does
+     <code>mulTable 5 8</code> give?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="predMulMCQ"></div></div>
+
+  <!-- 4. THINK LIKE A VERIFIER (pre-proof) -->
+  <h2>4 · Before the proof — think like a verifier</h2>
+  <p>You have read two of these proofs now, so before unrolling this one, try to predict its shape. The algorithm is
+     new, but the <em>habits</em> carry over: ask what kind of arithmetic the goals will be, which already-proved
+     results you can stand on, and what has to be generalised for an induction to go through. The answers differ from
+     the first two chapters, and where they differ is worth noticing — which is why it pays to ask before you read.</p>
+
+  <h3>Will <code>omega</code> finish it, as before?</h3>
+  <p>Addition and subtraction closed with <code>omega</code>. This proof multiplies numbers and carries powers of ten
+     (<code>10ⁱ</code>) around. Will <code>omega</code> close it the same way?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="predOmegaMCQ"></div></div>
+
+  <h3>What can the proof stand on?</h3>
+  <p>The answer is a sum of many partial products, and the summing is done by <code>verticalAdd</code> — which you
+     proved correct in Chapter 1. What will this proof most likely lean on?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="predReuseMCQ"></div></div>
+
+  <h3>What must be kept general?</h3>
+  <p>The sum is proved by induction on the digits of <code>b</code>, and each digit's partial product is shifted by
+     its position. For the inductive hypothesis to apply to the tail, what should be generalised — the way the carry
+     was in addition?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="predGenMCQ"></div></div>
+
+  <!-- 5. PROOF -->
+  <h2>5 · The proof</h2>
+  <p>It is a chain of short lemmas, each one built on the one before. Every step comes in two parts. First
+     <strong>the argument</strong> in plain words: read just these, top to bottom, and you'll see why long
+     multiplication is correct. Then, folded underneath, <strong>the full Lean proof</strong>, for anyone who
+     wants the machine-checked details. You can follow the whole chapter without opening a single dropdown.</p>
+  <p class="small">In the Lean, goal states in the tooltips are lightly abbreviated — · for *, and c' names a
+     column's carry-out — the shapes are what matter.</p>
+  <div id="proofMul"></div>
+
+  <!-- 6. TEST THE IDEAS -->
+  <h2>6 · Test the ideas</h2>
+
+  <h3>The identity behind it all</h3>
+  <p>Long multiplication rests on one equation — the one the final theorem proves. Which is it?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="idMCQ"></div></div>
+
+  <h3>Why shift each partial product?</h3>
+  <p>The partial product for the bottom digit in place <em>i</em> is slid left by <em>i</em> positions before being
+     added. Why?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="shiftMCQ"></div></div>
+
+  <h3>Which end of the list gets the zeros?</h3>
+  <p><code>shiftLeft</code> puts the zeros at the HEAD of the list. Why is that the right end?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="shiftDirMCQ"></div></div>
+
+  <h3>The two carries inside one column</h3>
+  <p>Inside <code>mulDigit</code>, processing one digit does a times-table lookup and then <em>two</em>
+     <code>addTable</code> steps. Why does a single column need carries from two places combined?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="carryMCQ"></div></div>
+
+  <h3>Why a pair of digits, not a digit and a Bool?</h3>
+  <p><code>addTable</code> and <code>subTable</code> returned <code>Digit × Bool</code>, but <code>mulTable</code>
+     returns <code>Digit × Digit</code>. Why the richer type?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="typeMCQ"></div></div>
+
+  <h3>Why lift the work limit?</h3>
+  <p><code>mulDigit_correct</code> begins with <code>set_option maxHeartbeats 0</code> — something the table proofs
+     in addition and subtraction never needed. Why here?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="heartbeatsMCQ"></div></div>
+
+  <!-- 7. EXERCISES -->
+  <h2>7 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill; press <b>Run</b> and your code is
+     compiled by Lean on the server. <b>Run all</b> checks every cell in turn, <b>Reset all</b> restores the blank
+     cells, and every cell hides a <em>reference solution</em> you can reveal once you've tried.
+     The <code>_</code> proof holes shown in the cells are spelled <code>by omega</code> on the server, as in §2.
+     <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>. The first run is
+     slow: Lean is cold-loading Mathlib.)</span></p>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proof is exactly the one in §5 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run it in VS Code.</p>
+
+  <div class="pager">
+    <a href="subtraction.html">← Vertical Subtraction</a>
+    <a href="cover.html">Contents</a>
+    <a href="division.html">Long Division →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+const digitAt=(s,c)=>{const i=s.length-1-c;return i>=0?+s[i]:0;};
+const sup=k=>(""+k).split("").map(d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[+d]).join("");
+
+const M={a:"123",b:"45",d:null,step:0};
+function computeMul(aStr,bStr){
+  const Na=BigInt(aStr),Nb=BigInt(bStr),total=Na*Nb,bLen=bStr.length;
+  const pps=[];
+  for(let i=0;i<bLen;i++){const bi=+bStr[bStr.length-1-i];const val=Na*BigInt(bi);pps.push({bi,pos:i,valStr:val.toString(),val});}
+  const W=Math.max(total.toString().length,aStr.length,bStr.length,1);
+  return {Na,Nb,total,bLen,pps,W,totalStr:total.toString()};
+}
+function cellsRow(gut,arr){let h=`<div class="row"><div class="gut">${gut}</div>`;for(const x of arr)h+=`<div class="cell ${x.cls}">${x.t}</div>`;return h+`</div>`;}
+function digitsOf(str,W,cls){const arr=[];for(let c=W-1;c>=0;c--){const has=c<str.length;arr.push({t:has?str[str.length-1-c]:"",cls:has?cls:"blank"});}return arr;}
+function ppArr(pp,W,cls){const arr=[],vl=pp.valStr.length;for(let c=W-1;c>=0;c--){
+    if(c<pp.pos){arr.push({t:"0",cls});}                                  /* explicit shift zeros */
+    else{const place=c-pp.pos,has=place<vl;arr.push({t:has?pp.valStr[vl-1-place]:"",cls:has?cls:"blank"});}
+  }return arr;}
+function mulCarryRow(bi,aStr,W){const car=[];let c=0;for(let j=0;j<aStr.length;j++){car[j]=c;c=(digitAt(aStr,j)*bi+c)/10|0;}
+  car[aStr.length]=c;                                   /* final carry-out lands above the partial product's leading digit */
+  let h=`<div class="row"><div class="gut"></div>`;
+  for(let col=W-1;col>=0;col--){const cv=col<=aStr.length?(car[col]||0):0;h+=`<div class="mcar">${cv>0?cv:""}</div>`;}
+  return h+`</div>`;}
+function mulRender(){
+  const d=M.d,W=d.W,atEnd=M.step>=d.bLen-1;let h="";
+  h+=mulCarryRow(d.pps[M.step].bi,M.a,W);
+  h+=cellsRow("",digitsOf(M.a,W,""));
+  h+=`<div class="row"><div class="gut"><span class="opSym">×</span></div>`;
+  for(let c=W-1;c>=0;c--){const w=c<M.b.length,cl=c===M.step?"act":"";h+=`<div class="cell ${w?cl:'blank'}">${w?digitAt(M.b,c):""}</div>`;}
+  h+=`</div><div class="hr"></div>`;
+  for(let i=0;i<=M.step;i++) h+=cellsRow("",ppArr(d.pps[i],W,i===M.step?"act":""));
+  if(atEnd){h+='<div class="hr"></div>';h+=cellsRow('<span style="color:var(--green)">+</span>',digitsOf(d.totalStr,W,"tot"));}
+  $("board").innerHTML=h;
+  let running=0n;const terms=[];
+  for(let i=0;i<=M.step;i++){running+=d.pps[i].val*(10n**BigInt(d.pps[i].pos));terms.push(`${M.a}×${d.pps[i].bi}×10${sup(i)}`);}
+  const k=M.step+1;
+  const partB=BigInt(M.b.slice(Math.max(0,M.b.length-(M.step+1)))||"0");
+  $("ipanel").innerHTML=
+    `<div class="ititle">After ${k} of ${d.bLen} partial product${d.bLen>1?"s":""}</div>`+
+    `<div class="igen">each digit bᵢ of b adds one term (a × bᵢ) × 10ⁱ; all of them together make a × b</div>`+
+    `<div class="ieq">${terms.join(" + ")}</div>`+
+    `<div class="ieq">sum so far = ${running}${atEnd?"":` &nbsp;(of ${d.total})`}</div>`+
+    (atEnd?"":`<div class="ieq">✓ sum so far = a × (last ${k} digit${k>1?"s":""} of b): ${M.a} × ${partB} = ${running}</div>`)+
+    (atEnd ? (running===d.total?`<div class="iok">✓ all ${d.bLen} terms in → ${d.total} = a × b</div>`:`<div class="ino">✗</div>`)
+           : `<div class="igen">${d.bLen-k} more digit${d.bLen-k>1?"s":""} of b to go</div>`);
+  const pp=d.pps[M.step];
+  $("detail").innerHTML=`Row ${M.step+1}: ${M.a} × ${pp.bi} = <b>${pp.valStr}</b>${M.step>0?`, shifted left ${M.step} → <b>${pp.valStr}${"0".repeat(M.step)}</b>`:` (units place, no shift)`}.`;
+  $("lbl").textContent=`partial product ${M.step+1} of ${d.bLen}`;
+  $("prev").disabled=M.step<=0;$("next").disabled=M.step>=d.bLen-1;
+}
+function start(){M.a=clean($("opA").value);M.b=clean($("opB").value);M.d=computeMul(M.a,M.b);M.step=0;mulRender();}
+$("go").onclick=start;$("prev").onclick=()=>{if(M.step>0){M.step--;mulRender();}};$("next").onclick=()=>{if(M.step<M.d.bLen-1){M.step++;mulRender();}};
+[$("opA"),$("opB")].forEach(e=>e.addEventListener("keydown",ev=>{if(ev.key==="Enter")start();}));
+
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+function mulImpl(){ return `<p class="pstep">Layer 1 · The single-digit times table <span class="n">— split into (units, tens)</span></p>
+<p><code>mulTable</code> maps a pair of digits to their product, split into a <em>units</em> digit and a <em>tens</em> digit (7 × 8 = 56 becomes the pair 6, 5). Most of its 100 rows are omitted here.</p>
+<pre class="lean">${K("def")} ${T("mulTable","lem","mulTable : Digit → Digit → Digit × Digit","","Maps a pair of digits to their product, written as a units digit and a tens digit (7 × 8 = 56 → (6, 5)).")} : Digit → Digit → Digit × Digit
+  | ⟨0, _⟩, _ => (0, 0)              ${C("-- 0 × anything = 0")}
+  | _, ⟨0, _⟩ => (0, 0)
+  | ⟨3, _⟩, ⟨7, _⟩ => (1, 2)          ${C("-- 3 × 7 = 21  → units 1, tens 2")}
+  | ⟨9, _⟩, ⟨9, _⟩ => (1, 8)          ${C("-- 9 × 9 = 81  → units 1, tens 8")}
+  | ...                              ${C("-- all 100 digit pairs (impossible ≥10 cases dismissed by absurd)")}</pre>
+<p class="pstep">Layer 2 · A whole number times one digit <span class="n">— two carry sources combined</span></p>
+<p><code>mulDigit</code> walks the digits of a number, threading a carry — but the carry has <em>two</em> sources, the tens digit of each little product and any overflow from adding the previous carry. Combining them is the one genuinely new wrinkle, and it reuses <code>addTable</code> from Chapter 1.</p>
+<pre class="lean">${K("def")} ${T("mulDigit","lem","mulDigit : MultiDigit → Digit → Digit → MultiDigit","","Multiplies a digit list by a single digit b, carrying between columns; the carry is itself a Digit — in real runs it reaches at most 8, and the proof covers all ten values anyway.")} : MultiDigit → Digit → Digit → MultiDigit
+  | [], _, ⟨0, _⟩ => []                       ${C("-- no digits, no carry: done")}
+  | [], _, carry  => [carry]                  ${C("-- a leftover carry becomes the top digit")}
+  | d :: ds, b, carry =>
+      ${K("let")} (units, tens) := mulTable d b           ${C("-- d × b = tens·10 + units")}
+      ${K("let")} (units', carry') := ${T("addTable","lem","addTable : Digit → Digit → Digit × Bool","","Reused from the addition chapter: the single-digit addition table. Multiplication adds the carries with it.")} units carry    ${C("-- fold in the incoming carry")}
+      ${K("let")} carryDigit := ${K("if")} carry' ${K("then")} 1 ${K("else")} 0
+      ${K("let")} (finalCarry, _) := addTable tens carryDigit ${C("-- combine BOTH carry sources (tens ≤ 8 since d×b ≤ 81, so this add never overflows — the dropped Bool is always false)")}
+      units' :: mulDigit ds b finalCarry          ${C("-- emit a digit, carry the rest on")}
+${T("termination_by","tac","termination_by a _ _ => a.length","","The digit list shrinks at each recursive call, so the recursion stops.")} a _ _ => a.length</pre>
+<p class="pstep">Layer 3 · Shift, partial products, and their sum <span class="n">— reaches back into the addition chapter</span></p>
+<p><code>shiftLeft</code>, <code>partialProduct</code>, <code>partialProducts</code>, <code>sumAll</code> and <code>verticalMulPP</code> assemble the answer: form one shifted partial product per digit of the bottom number, then add them all with <code>verticalAdd</code>.</p>
+<pre class="lean">${K("def")} ${T("shiftLeft","lem","shiftLeft : MultiDigit → Nat → MultiDigit","","shiftLeft prepends n zeros to the list. The list is least-significant-first, so a zero at the head of the list is a zero at the END of the written number — §1's trailing zero, a factor of ten.")} : MultiDigit → Nat → MultiDigit
+  | xs, 0     => xs
+  | xs, n + 1 => 0 :: shiftLeft xs n
+
+${K("def")} ${T("partialProduct","lem","partialProduct a b pos","","a × b (one digit), then shifted left into place pos.")} (a : MultiDigit) (b : Digit) (pos : Nat) : MultiDigit :=
+  shiftLeft (mulDigit a b 0) pos
+
+${K("def")} ${T("partialProducts","lem","partialProducts : MultiDigit → MultiDigit → Nat → List MultiDigit","","One partial product per digit of b, each shifted by its position.")} : MultiDigit → MultiDigit → Nat → List MultiDigit
+  | _, [], _        => []
+  | a, b :: bs, pos => partialProduct a b pos :: partialProducts a bs (pos + 1)
+
+${K("def")} ${T("sumAll","lem","sumAll : List MultiDigit → MultiDigit","","Adds a whole list of numbers — by repeatedly calling verticalAdd from the addition chapter.")} : List MultiDigit → MultiDigit
+  | []      => []
+  | x :: xs => ${T("verticalAdd","lem","verticalAdd : MultiDigit → MultiDigit → Bool → MultiDigit","","The column adder from Chapter 1, used here to total the partial products.")} x (sumAll xs) false
+
+${K("def")} ${T("verticalMulPP","lem","verticalMulPP (a b) : MultiDigit","","Long multiplication: sum of all the shifted partial products.")} (a b : MultiDigit) : MultiDigit :=
+  sumAll (partialProducts a b 0)</pre>`; }
+
+function buildMulProof(){ return `<p class="pstep">The times table <span class="n">— all 100 products, checked one by one</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>There are only a hundred single-digit products, so there is nothing to prove cleverly — Lean checks every pair by computation. Each entry stores the product as a (units, tens) split, and for it to be trustworthy that split has to read back as the real product: 7 × 8 is stored as (6, 5), and 6 + 10·5 = 56. When the cases are finite, brute force is a genuine proof.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Proving correctness of the table boils down")}
+${C("-- to unfolding all cases")}
+${C("-- Each entry records the right (units, tens) split of a × b.")}
+${K("theorem")} ${T("mulTable_correct","lem","mulTable_correct","(mulTable a b).1.val + 10·(mulTable a b).2.val = a.val * b.val","The units digit plus ten times the tens digit reconstruct the true product a × b.")} (a b : Digit) :
+    (mulTable a b).1.val + 10 * (mulTable a b).2.val =
+    a.val * b.val := ${K("by")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b","100 goals, one per (a,b)","Enumerates all ten values of each digit.")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("simp","tac","simp [mulTable]","each of the 100 goals is a true numeric statement","Looks up the entry and computes; every case closes.")} [mulTable]</pre></details>
+
+<p class="pstep">A concatenation helper <span class="n">— the value of two joined digit lists</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Before the multiplier itself, one small fact we will need constantly: what is the value of two digit lists glued end to end? Joining <code>a</code> in front of <code>b</code> keeps <code>a</code> where it is but pushes every digit of <code>b</code> up by the length of <code>a</code> — so the value is <code>a</code> plus <code>b</code> shifted by that many powers of ten. A short induction on the first list settles it, and it is the key to reasoning about shifted partial products later on.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- first a helper lemma")}
+${C("-- The value of two concatenated digit lists")}
+${C("-- equals the first number plus 10^length * the second number")}
+${C("-- This is the key lemma for reasoning about shifted partial products")}
+${K("theorem")} ${T("toNat_append","lem","toNat_append","toNat (a ++ b) = toNat a + 10^(a.length) * toNat b","Concatenating two digit lists adds the second, shifted up by the length of the first.")} (a b : List Digit) :
+  toNat (a ++ b) = toNat a + 10^(a.length) * toNat b := ${K("by")}
+  ${C("-- Structural induction on the first list 'a'")}
+  ${T("induction","tac","induction a","cases a = []  and  a = d :: ds","Structural induction on the first list.")} a ${K("with")}
+  | nil =>
+    ${C("-- Base case: 'a' is empty. toNat([]) evaluates to 0.")}
+    ${C("-- Equation trivially reduces to: toNat b = 0 + 1 * toNat b.")}
+    simp [toNat]
+  | cons d ds ih =>
+    ${C("-- 1. Unfold toNat to extract the head digit 'd' from the combined list.")}
+    simp [toNat]
+    ${C("-- 2. Substitute the inductive assumption for the tail 'ds'.")}
+    rw [ih]
+    ${C("-- 3. Solve the algebra. 'ring' natively groups the terms and matches")}
+    ${C("-- the outer '10 *' to the '+ 1' in the exponent (10^(ds.length + 1)).")}
+    ${T("ring","tac","ring","toNat (d :: (ds ++ b)) = toNat (d :: ds) + 10^(ds.length + 1) * toNat b","ring groups the shifted terms and matches the exponent.")}</pre></details>
+
+<p class="pstep">A number times one digit <span class="n">— induction on the digits, two carries in play</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>This is the workhorse: multiply a whole number by a single digit. We argue by induction on the digits of that number, and the guarantee is that the result denotes exactly <code>toNat a · b</code> plus the incoming carry. The subtlety is that <em>two</em> different carries meet at every column. First the times table gives this digit's product a (units, tens) split — that tens part is a carry into the next column. Then Chapter 1's <code>addTable</code> is used <strong>twice</strong>: once to fold the <em>incoming</em> carry into the units, and again to fold the resulting overflow into the tens. Naming that Bool-to-digit overflow (the <code>set</code> step) is what lets both <code>addTable</code> citations talk about the same value. With everything reduced to concrete digits, <code>simp_all</code> and <code>omega</code> finish each case.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Single digit multiplication is correct:")}
+${C("-- the result represents toNat a * b + carry")}
+${C("-- ~1000 concrete cases (digit × digit × carry); the heartbeat limit is lifted.")}
+${T("set_option maxHeartbeats 0","tac","set_option maxHeartbeats 0 in","","Removes Lean's work limit for this proof: exhausting 10×10×10 cases is heavy but purely computational.")} in
+${K("theorem")} ${T("mulDigit_correct","lem","mulDigit_correct","toNat (mulDigit a b carry) = toNat a * b.val + carry.val","Multiplying the list a by the digit b, plus the incoming carry, denotes exactly toNat a · b + carry.")} (a : MultiDigit) (b : Digit) (carry : Digit) :
+    toNat (mulDigit a b carry) = toNat a * b.val + carry.val := ${K("by")}
+  ${T("induction","tac","induction a generalizing carry","cases a = []  and  a = d :: ds","Induction on the digit list, keeping the carry general so the hypothesis applies to the next column's carry.")} a generalizing carry ${K("with")}
+  | nil =>
+    ${C("-- Base case: empty list")}
+    ${C("-- expand all carry and b combinations")}
+    ${C("-- rfl closes since both sides reduce to same literal")}
+    fin_cases carry &lt;;&gt; fin_cases b &lt;;&gt;
+    simp only [mulDigit, toNat]
+  | cons d ds ih =>
+    ${C("-- Recursive case: current digit d, remaining digits ds")}
+    simp only [mulDigit, toNat]
+    ${C("-- correctness of times table lookup for d × b")}
+    have hmul := ${T("mulTable_correct","lem","mulTable_correct d b","d × b is split correctly","Layer 1, for this column's digits.")} d b
+    ${C("-- correctness of adding incoming carry to units digit")}
+    have hadd1 := ${T("addTable_correct","lem","addTable_correct (mulTable d b).1 carry","units + incoming carry is correct","Reused from Chapter 1 — adding the incoming carry to the product's units.")} (mulTable d b).1 carry
+    ${C("-- converts Bool carry from addTable to Digit for next addTable call")}
+    ${T("set","tac","set carryDigit := if (addTable (mulTable d b).1 carry).2 then ⟨1, _⟩ else ⟨0, _⟩ with hcd","","The set step names the Bool-to-Digit conversion carryDigit and records its definition as hcd, so the two later addTable citations can share it. This is the step the condensed page omitted.")} carryDigit : Digit :=
+      ${K("if")} (addTable (mulTable d b).1 carry).2
+      ${K("then")} ⟨1, ${K("by")} omega⟩
+      ${K("else")} ⟨0, ${K("by")} omega⟩ ${K("with")} hcd
+    ${C("-- correctness of combining tens digit with carryDigit")}
+    have hadd2 := addTable_correct (mulTable d b).2 ${T("carryDigit","lem","addTable_correct (mulTable d b).2 carryDigit","tens + the converted overflow is correct","The SECOND place Chapter 1's table lemma is cited in one proof — now on the named carryDigit from the set step.")}
+    ${C("-- inductive hypothesis applied with new carry")}
+    have hih := ${T("ih","tac","ih (addTable (mulTable d b).2 carryDigit).1","toNat (mulDigit ds b carry') = toNat ds * b.val + carry'.val","The tail is already correct, for whatever carry this column passes on.")} (addTable (mulTable d b).2 carryDigit).1
+    ${C("-- expand all digit and carry combinations")}
+    ${C("-- with everything concrete simp_all reduces to arithmetic")}
+    ${C("-- omega closes each case")}
+    ${T("fin_cases","tac","fin_cases d <;> fin_cases b <;> fin_cases carry","reduce to concrete arithmetic in every case","With all three digits concrete, the lookups compute.")} d &lt;;&gt; fin_cases b &lt;;&gt; fin_cases carry &lt;;&gt;
+    ${T("simp_all","tac","simp_all [mulTable, addTable, carryVal]","each case becomes a numeric goal","")} [mulTable, addTable, carryVal] &lt;;&gt; ${T("omega","tac","omega","closes the arithmetic","")}</pre></details>
+
+<p class="pstep">Shifting into place <span class="n">— prepending zeros multiplies by a power of ten</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>To line a partial product up under the right column you prepend zeros to it. Each zero you add in front multiplies the value by ten, so <code>n</code> of them multiply it by <code>10ⁿ</code>. A one-line induction on <code>n</code> confirms it, with <code>ring</code> handling the algebra of powers.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- shiftLeft multiplies by 10^n")}
+${C("-- Prepending zeros multiplies by a power of ten.")}
+${K("theorem")} ${T("shiftLeft_correct","lem","shiftLeft_correct","toNat (shiftLeft a n) = toNat a * 10^n","Shifting left by n places multiplies the value by 10ⁿ.")} (a : MultiDigit) (n : Nat) :
+    toNat (shiftLeft a n) = toNat a * 10^n := ${K("by")}
+  induction n ${K("with")}
+  | zero => simp [shiftLeft]
+  | succ n ih =>
+    simp [shiftLeft, ih]
+    ${T("ring","tac","ring","10 · (toNat a · 10ⁿ) = toNat a · 10ⁿ⁺¹","Pure algebra of powers; ring normalises both sides.")}</pre></details>
+
+<p class="pstep">One partial product <span class="n">— a × b, shifted into position</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>A single partial product is just "multiply <code>a</code> by one digit, then shift it into place." Both halves are already proved: <code>mulDigit_correct</code> gives the value <code>a · b</code>, and <code>shiftLeft_correct</code> gives the <code>× 10^pos</code>. Feeding both to <code>simp</code> assembles them in one line.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- partialProduct correctness")}
+${C("-- One partial product: a × b, shifted into place.")}
+${K("theorem")} ${T("partialProduct_correct","lem","partialProduct_correct","toNat (partialProduct a b pos) = toNat a * b.val * 10^pos","Combines mulDigit_correct (the value a × b) with shiftLeft_correct (the × 10^pos).")} (a : MultiDigit) (b : Digit) (pos : Nat) :
+    toNat (partialProduct a b pos) = toNat a * b.val * 10^pos := ${K("by")}
+  simp [partialProduct, shiftLeft_correct, mulDigit_correct]</pre></details>
+
+<p class="pstep">Summing a list of numbers <span class="n">— repeated addition denotes the ordinary sum</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The algorithm totals its partial products by folding <code>verticalAdd</code> down the list. This lemma says that fold denotes exactly the ordinary sum of the values. Induction on the list: the empty list sums to zero, and for a cons the no-carry corollary <code>verticalAdd_correct'</code> from Chapter 1 turns that column's <code>verticalAdd</code> into a plain <code>+</code>, with the tail handled by the hypothesis.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- sumAll correctness")}
+${C("-- Adding a whole list of numbers denotes the sum of their values.")}
+${K("theorem")} ${T("sumAll_correct","lem","sumAll_correct","toNat (sumAll products) = (products.map toNat).sum","Totalling a list of numbers with repeated verticalAdd denotes the ordinary sum of their values.")} (products : List MultiDigit) :
+    toNat (sumAll products) = (products.map toNat).sum := ${K("by")}
+  ${T("induction","tac","induction products","cases [] and x :: xs","Induction on the list of partial products.")} products ${K("with")}
+  | nil => simp [sumAll]
+  | cons x xs ih =>
+    simp [sumAll, ${T("verticalAdd_correct'","lem","verticalAdd_correct'","toNat (verticalAdd x y false) = toNat x + toNat y","The no-carry corollary from the addition chapter — this is where sumAll's verticalAdd becomes plain addition.")}, ih]</pre></details>
+
+<p class="pstep">Every partial product at its place value <span class="n">— induction on the bottom number</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Now the whole list of partial products at once: the value of the partial product for the <em>i</em>-th digit of <code>b</code> is <code>toNat a</code> times that digit, shifted to that digit's place. Induction on <code>b</code>, generalising the starting position so the tail's places line up: the head follows from the single-partial-product lemma, and the tail from the hypothesis once the exponents are matched up.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- partialProducts correctness")}
+${C("-- The list of partial product values equals what you'd get by mapping each")}
+${C("-- digit of b with its index to toNat a * digit * 10^(pos + index).")}
+${K("theorem")} ${T("partialProducts_correct","lem","partialProducts_correct","(partialProducts a b pos).map toNat = b.mapIdx (fun i d =&gt; toNat a * d.val * 10^(pos + i))","Each partial product's value is exactly toNat a times that digit, at that digit's place value.")} (a b : MultiDigit) (pos : Nat) :
+    (partialProducts a b pos).map toNat =
+    b.mapIdx (${K("fun")} i d => toNat a * d.val * 10^(pos + i)) := ${K("by")}
+  ${T("induction","tac","induction b generalizing pos","cases [] and d :: ds","Induction on b, generalising pos so the tail's positions line up.")} b generalizing pos ${K("with")}
+  | nil =>
+    ${C("-- Base case: Both sides evaluate to empty lists.")}
+    ${C("-- rfl forces the kernel to compute both sides to [], closing the goal instantly.")}
+    rfl
+  | cons d ds ih =>
+    ${C("-- Step 1: Use standard list lemmas to evaluate one step of both sides")}
+    simp only [partialProducts, List.map_cons, List.mapIdx_cons]
+    ${C("-- Step 2: Split into Head equality and Tail equality")}
+    ${T("congr","tac","congr 1","two subgoals: heads equal, tails equal","Strips the list cons, leaving head and tail obligations.")} 1
+    · ${C("-- Subgoal 1: Head equality")}
+      simp [partialProduct_correct]
+    · ${C("-- Subgoal 2: Tail equality")}
+      ${C("-- Apply the inductive hypothesis to the tail")}
+      rw [ih (pos + 1)]
+      ${C("-- We now have: ds.mapIdx (f) = ds.mapIdx (g).")}
+      ${C("-- congr 1 strips the mapIdx constructor, leaving just the inner functions to prove equal.")}
+      congr 1
+      ${C("-- ext introduces the function arguments: index 'i' and digit 'y'")}
+      ${T("ext","tac","ext i y","goal for arbitrary index i and digit y","Reduces function equality to equality at each argument.")} i y
+      ${C("-- Remove the common multiplicative factor.")}
+      congr 1
+      ${C("-- 2nd congr 1 strips the base 10:")}
+      congr 1
+      ${C("-- Now that the non-linear exponentiation is gone, omega handles the linear")}
+      ${C("--addition perfectly!")}
+      ${T("omega","tac","omega","(pos + 1) + i = pos + (i + 1)","Linear arithmetic on the exponents, once the powers are stripped.")}</pre></details>
+
+<p class="pstep">The distributive identity, and the main theorem <span class="n">— where Chapter 1's addition finally pays off</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Everything converges here. The helper proves the heart of it: summing all the shifted partial products of <code>a</code> and <code>b</code> gives <code>a · b</code> — the distributive law, made concrete. It is proved by induction on <code>b</code>, generalising the position so the hypothesis reaches the tail; each step peels off one digit's partial product, uses Chapter 1's addition to split the sum, and <code>ring</code> closes the polynomial distribution. The main theorem is then a one-liner: instantiate the helper at position 0, where <code>10⁰ = 1</code>, and you have <code>toNat (verticalMulPP a b) = toNat a · toNat b</code> — the algorithm is correct for every pair of inputs, with no precondition at all.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Helper lemma that generalizes the position index to allow step-by-step index shifting")}
+${C("-- The heart of it: summing the shifted partial products gives a · b · 10^pos.")}
+${K("lemma")} ${T("verticalMulPP_helper","lem","verticalMulPP_helper","toNat (sumAll (partialProducts a b pos)) = toNat a * toNat b * 10^pos","The distributive identity, generalised over a starting position so the induction on b goes through.")} (a b : MultiDigit) (pos : Nat) :
+    toNat (sumAll (partialProducts a b pos)) = toNat a * toNat b * 10^pos := ${K("by")}
+  ${T("induction","tac","induction b generalizing pos","cases b = []  and  b = d :: ds","Induction on the bottom number; each digit contributes one partial product.")} b generalizing pos ${K("with")}
+  | nil =>
+    ${C("-- simp automatically handles the 'X * 0 = 0' arithmetic")}
+    simp [partialProducts, sumAll, toNat]
+  | cons d ds ih =>
+    ${C("-- Step 1: Explicitly unfold definitions to expose the head and tail structure")}
+    unfold partialProducts sumAll
+    ${C("-- Step 2: Apply verticalAdd_correct' to split the addition")}
+    ${C("-- This exposes the trapped recursive sumAll term so we can rewrite it.")}
+    ${T("simp","tac","simp [verticalAdd_correct', partialProduct_correct, toNat]","exposes this digit's partial product + the recursive sum","verticalAdd_correct' (Chapter 1) turns the verticalAdd into ordinary +, so the two pieces separate.")} [verticalAdd_correct', partialProduct_correct, toNat]
+    ${C("-- Step 3: Now that the term is exposed, the generalized IH matches perfectly.")}
+    rw [ih (pos + 1)]
+    ${C("-- Step 4: Clean up the algebraic polynomial distribution")}
+    ${T("ring","tac","ring","(a·d + 10·(a·toNat ds))·10^pos  =  a·(d + 10·toNat ds)·10^pos","Polynomial distribution; ring finishes it.")}
+
+${C("-- Main theorem")}
+${C("-- Instantiate the helper at position 0 (10⁰ = 1).")}
+${K("theorem")} ${T("verticalMulPP_correct","lem","verticalMulPP_correct","toNat (verticalMulPP a b) = toNat a * toNat b","The algorithm computes the true product, for every pair of inputs — no precondition needed.")} (a b : MultiDigit) :
+    toNat (verticalMulPP a b) = toNat a * toNat b := ${K("by")}
+  ${C("-- Step 1: Unfold the top-level definition")}
+  unfold verticalMulPP
+  ${C("-- Step 2: Instantiate our helper lemma at position 0")}
+  rw [verticalMulPP_helper a b 0]
+  ${C("-- Step 3: Since 10^0 = 1, ring perfectly simplifies the multiplication to finish the proof")}
+  ring</pre></details>`; }
+
+function mcq(elId,options,correct){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+$("mulImpl").innerHTML=mulImpl();
+$("proofMul").innerHTML=buildMulProof();
+bindTips();
+start();
+
+mcq("idMCQ",[
+  {text:"a × b = (a × b₀) × 10^(length of b), using only the units digit b₀.",why:"That uses just one digit of b. Every digit of b contributes a term."},
+  {text:"a × b = a × (b₀ + b₁ + …), adding the digits of b.",why:"This drops the place values — a digit in the tens place is worth ten times its face value, not its face value."},
+  {text:"a × b = Σᵢ (a × bᵢ) × 10ⁱ, summing over the digits bᵢ of b.",why:"Yes — distribute a across b's digits, each weighted by its place value 10ⁱ. That is exactly what verticalMulPP_correct proves."},
+  {text:"a × b = Σᵢ (aᵢ × bᵢ) × 10ⁱ, multiplying matching digits column by column.",why:"That's addition's habit misapplied — in a product every digit of a meets every digit of b, which is why each bᵢ multiplies the whole of a, not just aᵢ."},
+],2);
+mcq("shiftMCQ",[
+  {text:"Because a digit in place i is worth bᵢ × 10ⁱ, and shifting left by i multiplies by 10ⁱ.",why:"Right: the partial product for bᵢ contributes (a × bᵢ) × 10ⁱ, and the shift is exactly the × 10ⁱ — it carries the digit's place value into its partial product."},
+  {text:"Only to line the columns up neatly on the page.",why:"The alignment is a consequence, but the shift is mathematically required: it multiplies by the digit's place value."},
+  {text:"To make the final addition terminate.",why:"Termination comes from the lists getting shorter; the shift is about value, not termination."},
+  {text:"Shifted by i + 1 — the first bottom digit already sits in the ones place, so its product moves one step left.",why:"Off by one: the units digit (i = 0) is worth 10⁰ = 1, so its partial product is not shifted at all — that is why the main theorem instantiates the helper at pos 0 and finishes with 10⁰ = 1."},
+],0);
+mcq("shiftDirMCQ",[
+  {text:"The head is the units digit, so a zero there pushes every other digit one place up — ×10.",why:"Least-significant-first storage: prepending shifts every existing digit's place value up by one."},
+  {text:"It should append — 230 has its zero written at the end.",why:"In WRITING the zero is at the end; in the list the written order is reversed, so the end of the number is the head of the list."},
+  {text:"Either end works; Lean picks the cheaper one.",why:"Appending would multiply the wrong end — it would add a leading zero, worth nothing."},
+  {text:"Because lists can only grow at the head.",why:"Lean lists append fine (++); the head is chosen because it is the units place."},
+],0);
+mcq("carryMCQ",[
+  {text:"It's redundant — one addition would do; the second is a safety check.",why:"It isn't redundant: the two carries come from genuinely different places and must both be carried on."},
+  {text:"To verify the multiplication a second time.",why:"No re-checking happens; the second addTable combines a different quantity."},
+  {text:"Because addTable can only add, never multiply.",why:"True that addTable only adds, but that's not why two carries are combined."},
+  {text:"One carry comes from the product's tens digit, another from adding the incoming carry to the units.",why:"Exactly — two independent carry sources (the tens of d × b, and the overflow of units + carry) must both travel to the next column, so they are added together into the carry passed on — and since tens ≤ 8, combining them can never itself overflow, which is why the second addTable's Bool is discarded with _."},
+],3);
+mcq("predMulMCQ",[
+  {text:"(8, 5) — the two inputs.",why:"Those are the inputs, not the product."},
+  {text:"(4, 0) — tens then units, the other way round.",why:"Right digits, wrong order: the pair lists units first, so it should be (0, 4)."},
+  {text:"(0, 4) — units 0, tens 4, since 5 × 8 = 40.",why:"Right: 40 has units 0 and tens 4, and the pair gives units first."},
+  {text:"(5, 4)",why:"5 × 8 = 40, not 54."},
+],2);
+mcq("typeMCQ",[
+  {text:"Inconsistent design — it could just as well have been a Bool.",why:"It's a deliberate, necessary difference — see the correct answer."},
+  {text:"A single-digit product reaches 9 × 9 = 81, so its carry ranges over 0–8 — a whole digit.",why:"Exactly. Addition and subtraction only ever carry or borrow 0 or 1, which a Bool captures; multiplication's tens digit needs a full Digit. The size of the carry, not its presence, drives the type."},
+  {text:"Because multiplication never produces a Boolean value.",why:"The point isn't whether a Boolean appears — it's that the carry can be as large as 8, beyond what a Bool can hold."},
+  {text:"Because fin_cases requires a Digit-valued pair.",why:"fin_cases works on any finite type; it doesn't dictate the return type."},
+],1);
+mcq("heartbeatsMCQ",[
+  {text:"Its proof enumerates 10 × 10 × 10 = 1000 concrete cases, past Lean's default budget.",why:"Right — fin_cases d <;> fin_cases b <;> fin_cases carry explodes far beyond the ~100–200 cases of the table proofs; purely computational but heavy, so the heartbeat ceiling is lifted."},
+  {text:"mulDigit would not terminate without it.",why:"Termination is handled separately by the length measure; the option is about proof-time computation, not running the function."},
+  {text:"ring cannot run under the default limit.",why:"ring isn't the bottleneck here; the thousand-case enumeration is."},
+  {text:"It speeds up the compiled algorithm.",why:"It affects proof checking only, not the algorithm's runtime."},
+],0);
+mcq("predOmegaMCQ",[
+  {text:"Yes — omega settles any arithmetic goal.",why:"omega decides LINEAR arithmetic. Goals like toNat a · toNat b or toNat a · 10ⁿ are products of variables and variable powers — nonlinear, beyond omega."},
+  {text:"No — the goals are nonlinear, so the algebra is closed with ring instead.",why:"Right. Products of variables and powers of ten (toNat a · toNat b, 10ⁿ) sit beyond omega's linear arithmetic; once each piece denotes the correct number, what's left are polynomial identities, and ring normalises and closes them."},
+  {text:"No — omega cannot touch multiplication at all.",why:"Too strong — we used omega freely with multiplication by constants (the 10 · …). The obstacle is products of variables and variable exponents, which need ring."},
+  {text:"Yes, once fin_cases has run.",why:"fin_cases enumerates digits; it does not turn the list-level polynomial goals into something omega can finish."},
+],1);
+mcq("predReuseMCQ",[
+  {text:"Nothing earlier — it re-proves the addition facts it needs inline.",why:"It doesn't re-prove them: it cites the addition chapter's theorems directly."},
+  {text:"The subtraction precondition.",why:"Subtraction plays no role; multiplication is total and builds on addition."},
+  {text:"A fresh induction over the digits 0–9.",why:"The digit table is handled by fin_cases, but the summing step leans on a previously proved theorem, not a new digit induction."},
+  {text:"verticalAdd's correctness theorem from the addition chapter.",why:"Right — sumAll totals the partial products with verticalAdd, and the proof rewrites with verticalAdd_correct' to turn that into ordinary addition, using it as a building block. This is the first proof that stands on a previously verified algorithm."},
+],3);
+mcq("predGenMCQ",[
+  {text:"The top number a.",why:"a is fixed throughout; it doesn't need generalising for this induction."},
+  {text:"Nothing — plain induction on b works.",why:"It doesn't: each recursive step is at a higher position, so the hypothesis must hold for every position."},
+  {text:"The position / power of ten (the shift amount), so the hypothesis applies to the shifted tail.",why:"Right — verticalMulPP_helper generalises pos before inducting on b, exactly as addition generalised the carry. Same habit, new quantity."},
+  {text:"The length of b.",why:"The induction is on b's structure; its length isn't a separate parameter to generalise."},
+],2);
+
+/* ==================== notebook worksheet (submit-and-check) ==================== */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"mul_acase", n:1, kind:"code", title:"Fill the leftover-carry case",
+   prompt:`Complete the missing case of the digit-multiplier — the scaffold names it <code>studentMulDigit</code>. The digits have run out but a carry is still in hand; that leftover carry is the final, most-significant digit. Compare the leftover-carry case of <code>verticalAdd</code> from Chapter 1.`,
+   ctx:`  | [], _, ⟨0, _⟩ =&gt; <span class="c">[]                              -- no digits, no carry</span>
+  | [], _, carry  =&gt; <span class="ph">‹ your answer ›</span>
+  | d :: ds, b, carry =&gt; <span class="c">… units' :: studentMulDigit ds b finalCarry</span>`,
+   ph:"the result when a carry is left over…",
+   hints:[
+     `Think about what a leftover carry <em>means</em>: the digits are exhausted, yet there is still an amount in hand. That amount has nowhere to go except into a brand-new top digit. Recall how <code>verticalAdd</code> handled the very same situation in Chapter 1.`,
+     `No tactic is needed here — this is a definition, so you just supply the value. The <code>carry</code> is already a <code>Digit</code>; wrap it up as the single-element result.`],
+   sol:`[carry]`},
+  {ex:"mul_eval", n:2, kind:"compute", title:"Evaluate a table entry",
+   prompt:`<code>3 × 7 = 21</code>, so the table returns units <code>1</code> and tens <code>2</code>. Fully decidable — recall <code>decide</code> from <a href="prologue.html#tactics">Chapter 0</a>.`,
+   ctx:`<span class="kw">example</span> : mulTable ⟨3,_⟩ ⟨7,_⟩ = (⟨1,_⟩, ⟨2,_⟩) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `Both sides of this equation are concrete: fixed digits in, a fixed pair out. When everything is a finite, computable value, Lean can just check it for you — no clever reasoning required.`,
+     `Use the <code>decide</code> tactic from Chapter 0. It evaluates the decidable equality and confirms the two sides match.`],
+   sol:`decide`},
+  {ex:"mul_zero", n:3, kind:"proof", title:"Prove by exhausting the cases",
+   prompt:`Any digit times zero is zero (units and tens both 0). Ten digits, so exhaust the cases the way <code>mulTable_correct</code> did — but here each case closes by definition, so a lighter finisher than <code>simp</code> suffices.`,
+   ctx:`<span class="kw">theorem</span> mul_by_zero (a : Digit) :
+    mulTable a ⟨0, by omega⟩ = (⟨0, by omega⟩, ⟨0, by omega⟩) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"exhaust, then close each case…",
+   hints:[
+     `A <code>Digit</code> can only be one of ten values, so a proof that works for <em>every</em> digit can be done by simply trying all ten. Recall how <code>mulTable_correct</code> broke a digit into its cases.`,
+     `Split <code>a</code> into its ten cases with <code>fin_cases</code>, then chain a finisher across all of them with the combinator <code>&lt;;&gt;</code>. Each case holds by definition, so reach for <code>rfl</code> rather than the heavier <code>simp</code>.`,
+     `The shape is: enumerate the cases, then apply the reflexivity closer to all branches at once via the all-goals combinator.`],
+   sol:`fin_cases a &lt;;&gt; rfl`},
+  {ex:"mul_empty", n:4, kind:"proof", title:"Apply the main theorem",
+   prompt:`Multiplying by the empty list (zero) gives zero. <code>verticalMulPP_correct a b</code> says <code>toNat (verticalMulPP a b) = toNat a * toNat b</code>; specialise it to <code>b = []</code> and let <code>simp</code> reduce <code>toNat [] = 0</code> and the <code>· * 0</code> away.`,
+   ctx:`<span class="kw">theorem</span> mul_empty (a : MultiDigit) :
+    toNat (verticalMulPP a []) = 0 := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one line, using verticalMulPP_correct…",
+   hints:[
+     `You do not need to reprove multiplication — the correctness theorem already relates the algorithm to real multiplication. Specialise it to the empty second factor and let the arithmetic collapse.`,
+     `Feed <code>verticalMulPP_correct a []</code> to a simplifier. The tactic <code>simpa</code> both applies the lemma and cleans up, reducing <code>toNat [] = 0</code> and the <code>&middot; * 0</code> for you.`,
+     `The shape is <code>simpa</code> closing the goal <code>using</code> the correctness lemma applied to <code>a</code> and the empty list.`],
+   sol:`simpa using verticalMulPP_correct a []`},
+  {ex:"mul_shift", n:5, kind:"proof", title:"One shift is one factor of ten",
+   prompt:`Rewrite with the proved lemma <code>shiftLeft_correct</code>, then close the leftover pure-algebra goal (<code>10^1</code> versus <code>10 ·</code>) — <code>omega</code> can't multiply symbols, but the chapter's other finisher can.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) : toNat (shiftLeft a 1) = 10 * toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"rw [...], then…",
+   hints:[
+     `There is already a lemma describing what one shift does to the numeric value. Rewrite with it first, then you are left with a purely algebraic identity about powers of ten.`,
+     `Rewrite using <code>shiftLeft_correct</code>, then finish with <code>ring</code> — <code>omega</code> cannot handle the symbolic <code>10^1</code> versus <code>10 &middot;</code>, but <code>ring</code> can.`,
+     `The shape is: a <code>rw</code> step citing the shift lemma, then the ring-normalisation tactic to settle the leftover power-of-ten equality.`],
+   sol:`rw [shiftLeft_correct]; ring`},
+  {ex:"mul_whole", n:6, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`Your turn with no scaffold. Shifting a number left by <b>two</b> places multiplies it by 100. Prove it.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) : toNat (shiftLeft a 2) = 100 * toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"rewrite with the shift lemma, then close the algebra…",
+   hints:[
+     `The book already proved what one shift does to the value — rewrite with that lemma first, and you're left with a pure power-of-ten identity.`,
+     `Rewrite using <code>shiftLeft_correct</code>, then finish with <code>ring</code> (not <code>omega</code>, which can't handle the <code>10^2</code>).`],
+   sol:`rw [shiftLeft_correct]; ring`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script src="book.js"></script>
+</body>
+</html>

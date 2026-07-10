@@ -1,7 +1,7 @@
-import Mathlib.Tactic.FinCases  -- fin_cases
-import Mathlib.Data.Fintype.Basic  -- Fintype (Fin 10) instance for fin_cases
-import Mathlib.Tactic.Ring      -- ring
-import Mathlib.Tactic.SplitIfs  -- split_ifs
+import Mathlib.Tactic.FinCases
+import Mathlib.Data.Fintype.Basic
+import Mathlib.Tactic.Ring
+import Mathlib.Tactic.SplitIfs
 import Arithmetic_Formalization.Foundations
 import Arithmetic_Formalization.Multiplication
 import Arithmetic_Formalization.Subtraction

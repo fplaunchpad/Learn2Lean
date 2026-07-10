@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>The Cube-Root Trick — described, implemented, visualised, proved</title>
+<meta name="description" content="The mental cube-root trick for perfect cubes up to six digits, written in Lean 4 and proved correct two ways — by exhaustion and structurally."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧊</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#9a9a9a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:6px 0}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:90px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .cbox{display:flex;flex-direction:column;gap:16px;align-items:flex-start;background:#000;border-radius:8px;padding:16px;overflow-x:auto;max-width:100%}
+  .crow{display:flex;align-items:center;gap:6px}
+  .clabel{color:var(--muted);font-size:12px;width:66px;flex:0 0 66px}
+  .cell{width:32px;height:40px;border:2px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#ccc;font-variant-numeric:tabular-nums}
+  .cell.u{border-color:var(--orange);color:var(--orange)}
+  .cell.hi{border-color:#2f5d68;background:#0c1416;color:#9fd7e0}
+  .cell.big{width:38px;height:46px;font-size:23px}
+  .cell.res{border-color:var(--green);color:var(--green)}
+  .cell.q{color:#555}
+  .eqm{color:var(--muted);font-size:15px;margin:0 4px}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:15px;word-break:break-word}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:14px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  .ladder{display:flex;flex-direction:column;gap:2px;margin:8px 0 2px;font-size:13px}
+  .ladder .lr{padding:2px 8px;border-radius:5px;color:#7a8a8c}
+  .ladder .lr.win{background:#0f2a14;color:var(--green);font-weight:bold}
+  .ladder .lr.over{color:#a06a5c}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin-top:10px;font-size:13px;color:#cfe7ec;max-width:560px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff} pre.lean .ph{color:var(--yellow)}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:440px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .recall{background:#15110a;border-left:3px solid var(--orange);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#ecdcc7;border-radius:0 6px 6px 0}
+  .cliphook{display:flex;align-items:center;gap:15px;background:linear-gradient(90deg,#181d1f,#11181a);border:1px solid var(--accent);border-radius:12px;padding:14px 18px;margin:18px 0;text-decoration:none;color:var(--fg)}
+  .cliphook:hover{border-color:var(--cyan)}
+  .cliphook .play{flex:0 0 auto;width:44px;height:44px;border-radius:50%;background:var(--orange);color:#0d0d0d;display:flex;align-items:center;justify-content:center;font-size:19px;padding-left:3px}
+  .cliphook .ct{font-size:14px;line-height:1.5}
+  .cliphook .ct b{color:#fff}
+  .cliphook .ct .k{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:3px}
+  .clipembed{margin:18px auto;display:flex;flex-direction:column;align-items:center;max-width:360px}
+  .clipembed .instagram-media{margin:0 auto !important;min-width:0 !important}
+  .clipembed .cap{max-width:340px;margin:8px 0 0;font-size:13px;color:var(--muted);text-align:center}
+  .clipembed .cap b{color:#fff}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .small{font-size:13px;color:var(--muted)}
+  .cubetab{margin:16px auto;width:max-content;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  .cubetab td{border:1px solid var(--line);padding:6px 10px;text-align:center;font-size:14px}
+  .cubetab .rh{color:var(--muted);text-align:right;border:none;padding-right:12px;font-size:12px}
+  .cubetab .swap{color:var(--orange)} .cubetab .fix{color:var(--muted)}
+  .worked{width:max-content;margin:16px auto;background:#000;border:1px solid var(--line);border-radius:10px;padding:16px 20px}
+  ul.steps{font-size:13px;color:var(--muted);margin:10px 0;padding-left:20px}
+  ul.steps li{margin:4px 0}
+  textarea.led{width:100%;min-height:48px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a></p>
+  <h1>The Cube-Root Trick</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <div class="clipembed">
+    <blockquote class="instagram-media"
+      data-instgrm-permalink="https://www.instagram.com/reel/DNx7h1M2OeR/?utm_source=ig_embed&amp;utm_campaign=loading"
+      data-instgrm-version="14"
+      style="background:#000;border:0;border-radius:12px;margin:0 auto;max-width:340px;width:100%">
+      <a href="https://www.instagram.com/reel/DNx7h1M2OeR/" target="_blank" rel="noopener">Watch the clip on Instagram</a>
+    </blockquote>
+    <p class="cap"><b>The clip that started this</b> — from Chelsea FC's official account. Liam Delap naming
+      six-digit cube roots on the spot. The two-step trick is below.</p>
+  </div>
+
+  <div class="recall">This one isn't an algorithm you'd grind through on paper — it's a party trick, two quick lookups
+     that pull a cube root out of the air. The twist is in the proof: it's the book's first result proved
+     <em>two different ways</em>, once by brute force and once by structure. It reuses the descending trial-digit search from
+     <a href="division.html">Chapter 4</a> and the units-digit / mod-10 thinking from
+     <a href="divisibility.html">Chapter 5</a>.</div>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the trick does</h2>
+  <p>That's the clip up top. What looks like a memory stunt is really just two fast lookups, and you'll have them
+     yourself in a couple of minutes. The part that's fun for us comes after the trick: proving it never once gets
+     the answer wrong.</p>
+  <p>Here's the game. Someone takes a whole number from 1 to 99, cubes it, and reads you the result — a perfect cube
+     of up to six digits, say <code>157464</code>. You name the root. Since the root has at most two digits, there
+     are only two things to find: its units digit and its tens digit, and each takes one glance.</p>
+
+  <p><strong>The units digit.</strong> Look at the last digit of the cube. Cubing does something very tidy to units
+     digits — it just permutes them:</p>
+  <table class="cubetab" aria-label="cube units digit table: root units digit versus the units digit of its cube">
+    <tr><td class="rh">root ends in</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td></tr>
+    <tr><td class="rh">cube ends in</td><td class="fix">0</td><td class="fix">1</td><td class="swap">8</td><td class="swap">7</td><td class="fix">4</td><td class="fix">5</td><td class="fix">6</td><td class="swap">3</td><td class="swap">2</td><td class="fix">9</td></tr>
+  </table>
+  <p>Every column is different, so the bottom row can be read backwards without ambiguity. And you barely have to
+     memorise it: six digits (0, 1, 4, 5, 6, 9) are <em>fixed</em> — the cube ends in the same digit the root does —
+     and the other four are just two swaps, <span style="color:var(--orange)">2 ↔ 8</span> and
+     <span style="color:var(--orange)">3 ↔ 7</span>. So a cube ending in 4 has a root ending in 4; a cube ending in
+     3 has a root ending in 7.</p>
+
+  <p><strong>The tens digit.</strong> Cross off the last three digits of the cube and look at what's left. Find the
+     largest digit <code>d</code> whose cube fits inside it. That <code>d</code> is the tens digit.</p>
+  <p>Why the last three? Because the tens digit <code>a</code> of the root contributes <code>a × 10</code>, and
+     <code>(10a + b)³ = 1000·a³ + (smaller terms)</code>. Dividing the cube by 1000 — i.e. dropping three digits —
+     leaves a number whose own "how many whole cubes fit?" answer is exactly <code>a</code>.</p>
+
+  <div class="worked" role="img" aria-label="Worked example: cube root of 157464 is 54, found from units digit 4 and thousands part 157">
+    <div class="crow"><span class="clabel">cube</span>
+      <span class="cell hi">1</span><span class="cell hi">5</span><span class="cell hi">7</span>
+      <span class="eqm">|</span>
+      <span class="cell">4</span><span class="cell">6</span><span class="cell u">4</span></div>
+    <div class="crow" style="margin-top:10px"><span class="clabel">root</span>
+      <span class="cell res big">5</span><span class="cell u big">4</span>
+      <span class="eqm">= 54</span></div>
+  </div>
+  <ul class="steps">
+    <li>Units: <code>157464</code> ends in <span style="color:var(--orange)">4</span> → root ends in
+        <span style="color:var(--orange)">4</span> (a fixed digit).</li>
+    <li>Tens: drop the last three → <span style="color:#9fd7e0">157</span>. The largest cube that fits is
+        <code>5³ = 125</code> (since <code>125 ≤ 157 &lt; 216 = 6³</code>) → tens digit
+        <span style="color:var(--green)">5</span>.</li>
+    <li>Read them off: <span style="color:var(--green)">5</span><span style="color:var(--orange)">4</span> = 54. And
+        indeed 54³ = 157464.</li>
+  </ul>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>Two tiny pieces, mirroring the two glances: a units-digit lookup, and a descending search for the tens digit —
+     the same shape as the trial-digit search from the division chapter, but comparing cubes.</p>
+  <div id="cubeImpl"></div>
+  <div class="note">The trick is defined for roots 1–99, i.e. perfect cubes of up to six digits — that scope is a
+     genuine <em>precondition</em>, and it reappears in both proofs as the hypothesis <code>m ≤ 99</code>. Dividing
+     by 1000 is just dropping three least-significant digits; no real division runs.</div>
+
+  <!-- 3. VISUALIZATION -->
+  <h2>3 · See it run — two glances</h2>
+  <p>Enter a perfect cube — say 157464, which is 54³ — and the trick pulls its root back out. Step through the two
+     lookups: the units digit comes straight off the table, and the tens digit falls out of the descending cube
+     search. A number that isn't a cube of some 1–99 gets a polite refusal, since the trick doesn't apply to it.</p>
+  <div class="stage">
+    <div class="controls">
+      <label class="small" for="opA">a perfect cube:</label>
+      <input class="num" id="opA" value="157464"/>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="srow">
+      <div class="cbox" id="board"></div>
+      <div class="ipanel" id="ipanel"></div>
+    </div>
+    <div class="stepdetail" id="detail"></div>
+  </div>
+
+  <!-- 4. VERIFIER -->
+  <h2>4 · Before the proof — think like a verifier</h2>
+  <p>You know the routine by now: before reading the proof, try to predict its shape. What must the statement
+     assume? Why is each of the two glances sound? And the interesting one here — what are the two quite different
+     ways you could prove a trick like this?</p>
+
+  <h3>What should the theorem say?</h3>
+  <div class="ex"><span class="tag">PREDICT</span><div id="preMCQ"></div></div>
+
+  <h3>Why the units lookup is safe</h3>
+  <p>The trick reads the root's units digit off the cube's units digit. What makes that reading unambiguous?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="unitsMCQ"></div></div>
+
+  <h3>Two roads to a proof</h3>
+  <p>The claim covers only the numbers 1–99. What proof strategy does that finiteness unlock — and what does it
+     cost?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="roadMCQ"></div></div>
+
+  <!-- 5. PROOF -->
+  <h2>5 · The formal Lean proof</h2>
+  <p>Each module below leads with the argument in plain English — what it claims and why it is true — and folds
+     the machine-checked Lean underneath. Read the reasoning first; open a proof only when you want to see how the
+     idea is spelled out for the kernel. The chapter shows two roads: a lazy proof that just checks all hundred
+     cases, and an honest chain that proves <em>why</em> each glance recovers its digit, never mentioning a specific
+     number.</p>
+  <div id="proofCube"></div>
+
+  <!-- 6. TEST THE IDEAS -->
+  <h2>6 · Test the ideas</h2>
+
+  <h3>Reading a cube backwards</h3>
+  <p>A perfect cube (root 1–99) ends in 2. What does its root end in?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="endMCQ"></div></div>
+
+  <h3>Why cubes and not squares?</h3>
+  <p>The units trick works for cube roots. Why wouldn't the same idea recover a <em>square</em> root's units digit?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="squareMCQ"></div></div>
+
+  <h3>Why drop exactly three digits?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="thousMCQ"></div></div>
+
+  <h3>Why search down from 9?</h3>
+  <p><code>findCubeTensHelper</code> counts down from 9 rather than up from 0. Why that direction?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="downMCQ"></div></div>
+
+  <h3>What <code>native_decide</code> is trusting</h3>
+  <p>The brute-force proof closes each of the 100 cases with <code>native_decide</code> rather than
+     <code>decide</code>. Why?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="ndMCQ"></div></div>
+
+  <h3>Where the two lemmas meet</h3>
+  <p>In the structural proof, <code>cubeUnitsDigit_inverts</code> gives one number and
+     <code>cubeTensDigit_eq</code> gives another. How do they combine into the root?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="combineMCQ"></div></div>
+
+  <h3>How the tens search is pinned</h3>
+  <p>The structural proof shows the tens search returns exactly the right digit <code>a</code>. What forces that?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="maxMCQ"></div></div>
+
+  <h3>Predict the trick</h3>
+  <p>Run the trick on <code>1728</code>. What root does it give?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="traceMCQ"></div></div>
+
+  <!-- 7. WORKSHEET -->
+  <h2>7 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill. Press <b>Run</b> (or <b>Ctrl+Enter</b>
+     in the cell) and Lean compiles your code on the server. <b>Run all</b> checks every cell in turn,
+     <b>Reset all</b> restores the blank cells, and every cell hides a <em>reference solution</em> you can reveal
+     once you've tried. <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>.
+     In the listings digit literals may be shown as <code>⟨3,_⟩</code>; the server spells them
+     <code>⟨3, by omega⟩</code>. The first run is slow: Lean is cold-loading Mathlib.)</span></p>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proofs are exactly those in §5 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run them in VS Code.</p>
+
+  <div class="pager">
+    <a href="gcd.html">← Euclid's GCD</a>
+    <a href="cover.html">Contents</a>
+    <a href="squareroot.html">Square Roots by Hand →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+
+/* ---- the trick, in JS ---- */
+const CU_FWD=[0,1,8,7,4,5,6,3,2,9];        // root units digit -> cube units digit
+const CU_INV=[];CU_FWD.forEach((c,r)=>{CU_INV[c]=r;});  // cube units digit -> root units digit
+function largestCubeLE(T){let d=0;for(let k=9;k>=1;k--){if(k*k*k<=T){d=k;break;}}return d;}
+
+const S={n:54,c:0,step:0,ok:true,msg:""};
+function cubeRender(){
+  if(!S.ok){
+    $("board").innerHTML=`<div style="color:var(--red);padding:6px;font-size:13px;max-width:320px;white-space:normal">${S.msg}</div>`;
+    $("detail").innerHTML="";$("ipanel").innerHTML=`<div class="ino">no run</div>`;
+    $("lbl").textContent="—";$("prev").disabled=true;$("next").disabled=true;return;}
+  const c=S.c,cs=String(c),L=cs.length,step=S.step;
+  const cu=c%10, ru=CU_INV[cu], T=Math.floor(c/1000), rt=largestCubeLE(T), n=rt*10+ru;
+  // cube row: box the high part (all but last 3) from step>=2, highlight units from step>=1
+  let cubeRow=`<span class="clabel">cube</span>`;
+  for(let i=0;i<L;i++){
+    const isUnits=(i===L-1), isHi=(i<L-3);
+    let cls="cell";
+    if(isUnits&&step>=1)cls+=" u";
+    else if(isHi&&step>=2)cls+=" hi";
+    cubeRow+=`<span class="${cls}">${cs[i]}</span>`;
+    if(i===L-4)cubeRow+=`<span class="eqm">|</span>`;   // divider before the last three
+  }
+  // root row: tens (step>=3), units (step>=1)
+  const done=step>=4;
+  const tCell=`<span class="cell big ${done?'res':(step>=3?'res':'q')}">${step>=3?rt:'?'}</span>`;
+  const uCell=`<span class="cell big ${done?'res':(step>=1?'u':'q')}">${step>=1?ru:'?'}</span>`;
+  const rootRow=`<span class="clabel">root ∛c</span>${tCell}${uCell}`+(done?`<span class="eqm">= ${n}</span>`:``);
+  $("board").innerHTML=`<div class="crow">${cubeRow}</div><div class="crow">${rootRow}</div>`;
+
+  // step log
+  let log="";
+  if(step>=1)log+=`<div style="color:var(--orange);margin:2px 0">units: ${c} ends in ${cu} → root ends in <b>${ru}</b>${cu===ru?" (a fixed digit)":(cu===2||cu===8?" (2↔8)":(cu===3||cu===7?" (3↔7)":""))}</div>`;
+  if(step>=2)log+=`<div style="color:#9fd7e0;margin:2px 0">drop the last three digits: ⌊${c} / 1000⌋ = ${T}</div>`;
+  if(step>=3)log+=`<div style="color:var(--green);margin:2px 0">tens: largest d with d³ ≤ ${T} is <b>${rt}</b>${T===0?" (nothing fits → 0)":` (${rt}³ = ${rt*rt*rt} ≤ ${T} < ${(rt+1)*(rt+1)*(rt+1)} = ${rt+1}³)`}</div>`;
+  if(step>=4)log+=`<div style="color:#fff;margin:4px 0">∛${c} = ${rt}${ru} = <b>${n}</b></div>`;
+  $("detail").innerHTML=log||`A perfect cube: ${c}. Its cube root is a number 1–99. Find it.`;
+
+  // panel
+  let p="";
+  if(step===0){
+    p=`<div class="ititle">The cube</div><div class="igen">someone cubed a number 1–99; you name the root</div>`+
+      `<div class="ieq">∛${c} = ?</div>`;
+  } else if(step===1){
+    p=`<div class="ititle">Units digit</div>`+
+      `<div class="igen">cubing permutes units digits, so the last digit fixes the root's last digit</div>`+
+      `<div class="ieq">${c} ends in ${cu} &nbsp;→&nbsp; root ends in ${ru}</div>`;
+  } else if(step===2){
+    p=`<div class="ititle">Drop the last three</div>`+
+      `<div class="igen">(10a + b)³ = 1000·a³ + smaller terms, so ⌊c/1000⌋ is dominated by a³</div>`+
+      `<div class="ieq">⌊${c} / 1000⌋ = ${T}</div>`;
+  } else if(step===3){
+    let lad=`<div class="ladder">`;
+    for(let d=1;d<=9;d++){const cube=d*d*d;const cls=d===rt?"lr win":(cube>T?"lr over":"lr");
+      lad+=`<div class="${cls}">${d}³ = ${cube}${cube<=T?" ≤ ":" > "}${T}${d===rt?"  ✓ largest that fits":""}</div>`;}
+    lad+=`</div>`;
+    p=`<div class="ititle">Tens digit</div>`+
+      `<div class="igen">largest digit whose cube fits in ${T}</div>`+lad+
+      `<div class="ieq">tens digit = ${rt}</div>`;
+  } else {
+    const good=(n===S.n);
+    p=`<div class="ititle">Assemble</div>`+
+      `<div class="igen">tens × 10 + units</div>`+
+      `<div class="ieq">root = ${rt} × 10 + ${ru} = ${n}</div>`+
+      (good?`<div class="iok">✓ and ${n}³ = ${c}</div>`:`<div class="ino">✗</div>`);
+  }
+  $("ipanel").innerHTML=p;
+  $("lbl").textContent=`step ${step+1} of 5`;
+  $("prev").disabled=step<=0;$("next").disabled=step>=4;
+}
+function start(){
+  const c=+clean($("opA").value);
+  // recover the integer cube root and confirm c is a perfect cube with a 1–99 root
+  let root=null;const g=Math.round(Math.cbrt(c));
+  for(let k=Math.max(1,g-1);k<=g+1;k++){ if(k*k*k===c){root=k;break;} }
+  if(root===null||root<1||root>99){
+    S.ok=false;
+    S.msg="Enter a perfect cube whose root is 1–99 — e.g. 157464 (= 54³) or 15625 (= 25³). "+c+" isn't a cube in range, so the trick has nothing to find.";
+    cubeRender();return;}
+  S.ok=true;S.c=c;S.n=root;S.step=0;cubeRender();
+}
+$("go").onclick=start;
+$("prev").onclick=()=>{if(S.ok&&S.step>0){S.step--;cubeRender();}};
+$("next").onclick=()=>{if(S.ok&&S.step<4){S.step++;cubeRender();}};
+$("opA").addEventListener("keydown",ev=>{if(ev.key==="Enter")start();});
+
+/* ---- tooltip engine ---- */
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+/* ---- §2 implementation ---- */
+function cubeImpl(){ return `<p class="pstep">Layer 1 · The units lookup <span class="n">— a ten-entry bijection</span></p>
+<p>A table from the cube's units digit to the root's units digit. It's the reverse of "cube each digit and keep the
+last digit" — and because that map is a bijection, the reverse is well defined.</p>
+<pre class="lean">${C("-- Cube units digits:  2³→8  3³→7  7³→3  8³→2 ; the other six are fixed.")}
+${K("def")} ${T("cubeUnitsDigit","lem","cubeUnitsDigit : Digit → Digit","","Given the units digit of a perfect cube, returns the units digit of its cube root. The inverse of d ↦ d³ % 10.")} : Digit → Digit
+  | ⟨0, _⟩ => ⟨0, _⟩
+  | ⟨1, _⟩ => ⟨1, _⟩
+  | ⟨2, _⟩ => ⟨8, _⟩          ${C("-- a cube ending in 2 has a root ending in 8")}
+  | ⟨3, _⟩ => ⟨7, _⟩
+  | ⟨4, _⟩ => ⟨4, _⟩
+  | ⟨5, _⟩ => ⟨5, _⟩
+  | ⟨6, _⟩ => ⟨6, _⟩
+  | ⟨7, _⟩ => ⟨3, _⟩          ${C("-- a cube ending in 7 has a root ending in 3")}
+  | ⟨8, _⟩ => ⟨2, _⟩
+  | ⟨9, _⟩ => ⟨9, _⟩</pre>
+<p class="pstep">Layer 2 · The tens search <span class="n">— largest d with d³ ≤ (cube / 1000)</span></p>
+<p>Count digits down from 9 and take the first whose cube fits — the division chapter's trial-digit search, with a
+cube table in place of a product. A small <code>cubeTable</code> holds <code>0³ … 9³</code>.</p>
+<pre class="lean">${K("def")} ${T("findCubeTensHelper","lem","findCubeTensHelper (upper : Nat) : Nat → Digit","","Tries d = start, start−1, …; returns the first whose cube ≤ upper (else 0). Structural recursion on the countdown, so termination is free.")} (upper : Nat) : Nat → Digit
+  | 0 => ⟨0, _⟩
+  | d + 1 =>
+      ${K("if")} h : d + 1 &lt; 10 ${K("then")}
+        ${K("if")} ${T("cubeTable","lem","cubeTable : Digit → Nat","","The lookup 0³…9³. cubeTable_correct proves cubeTable d = d.val ^ 3.")} ⟨d+1, h⟩ ≤ upper ${K("then")} ⟨d+1, h⟩   ${C("-- fits — take it")}
+        ${K("else")} findCubeTensHelper upper d               ${C("-- too big — try one smaller")}
+      ${K("else")} ⟨0, _⟩
+
+${K("def")} ${T("cubeTensDigit","lem","cubeTensDigit (n : MultiDigit) : Digit","","Runs the search on toNat n / 1000 — the cube with its last three digits dropped.")} (n : MultiDigit) : Digit :=
+  findCubeTensHelper (toNat n / 1000) 9    ${C("-- drop 3 digits, then search")}</pre>
+<p class="pstep">Layer 3 · The trick <span class="n">— two glances, assembled</span></p>
+<pre class="lean">${K("def")} ${T("cubeRootTrick","lem","cubeRootTrick (n : MultiDigit) : Digit × Digit","","Returns (units digit of root, tens digit of root).")} (n : MultiDigit) : Digit × Digit :=
+  ${K("let")} u := ${K("match")} n ${K("with")} | [] => ⟨0,_⟩ | d :: _ => cubeUnitsDigit d
+  ${K("let")} t := cubeTensDigit n
+  (u, t)
+
+${K("def")} ${T("cubeRootVal","lem","cubeRootVal (n : MultiDigit) : Nat","","Reads the pair back as a number: units + 10 · tens. This is what the theorems state equals the true root.")} (n : MultiDigit) : Nat :=
+  ${K("let")} (u, t) := cubeRootTrick n
+  u.val + 10 * t.val</pre>`; }
+
+/* ---- §5 proof ---- */
+function cubeProof(){ return `<p class="pstep">The lazy proof <span class="n">— check all one hundred cases</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The trick only claims to work for the hundred numbers 0 to 99, and a hundred is a finite thing you can simply walk through. So the honest-but-lazy option is to try them all: for each m, cube it, run the trick, and confirm you get m back. There is nothing to understand here — it certifies <em>that</em> the trick works without saying <em>why</em>, and it would collapse the moment you raised the ceiling from 99 to 999. The remaining modules pay that debt off by proving the mechanism.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("cubeRootTrick_correct1","lem","cubeRootTrick_correct1 (m : Nat) (hm : m ≤ 99) :\n  cubeRootVal (fromNat (m ^ 3)) = m","For every m from 0 to 99, running the trick on m³ returns m. Proved by trying all hundred.")} (m : Nat) (hm : m ≤ 99) :
+    cubeRootVal (fromNat (m ^ 3)) = m := ${K("by")}
+  ${T("interval_cases","tac","interval_cases m","one goal per value m = 0, 1, …, 99","Uses the bound hm to enumerate m into its hundred concrete values — a hundred goals, no variable left.")} m ${K("&lt;;&gt;")} ${T("native_decide","tac","native_decide","each concrete goal, e.g. cubeRootVal (fromNat (54^3)) = 54","Compiles the case and runs it. Needed over decide because fromNat is well-founded recursion, which the kernel won't reduce — the price is trusting the compiler.")}</pre></details>
+<p class="pstep">The units lookup <span class="n">— reading the root's last digit off the cube's last digit</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The trick's first glance recovers the root's units digit from the cube's units digit, and this module shows that glance is trustworthy. It comes in three finite pieces. The stored table really holds the cubes 0³…9³; the units lookup genuinely inverts the map <em>digit ↦ digit³ mod 10</em>; and, fed the last digit of any m³, it hands back the last digit of m. Every claim depends only on a single digit, so <code>fin_cases</code> and <code>interval_cases</code> split into ten rows and each computes out on its own.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("cubeTable_correct","lem","cubeTable_correct (d : Digit) :\n  cubeTable d = d.val ^ 3","The stored table 0³…9³ really is the cube. Ten rows, checked one by one.")} (d : Digit) :
+    cubeTable d = d.val ^ 3 := ${K("by")}
+  ${T("fin_cases","tac","fin_cases d","ten goals, one per digit value","Splits the finite Digit into its ten concrete values 0…9.")} d ${K("&lt;;&gt;")} simp [cubeTable]
+
+${K("theorem")} ${T("cubeUnitsDigit_correct","lem","cubeUnitsDigit_correct (d : Digit) :\n  (cubeUnitsDigit d).val ^ 3 % 10 = d.val","Cubing the looked-up digit and keeping the last digit returns d — the lookup inverts d ↦ d³ % 10.")} (d : Digit) :
+    (cubeUnitsDigit d).val ^ 3 % 10 = d.val := ${K("by")}
+  fin_cases d ${K("&lt;;&gt;")} simp [cubeUnitsDigit]
+
+${K("theorem")} ${T("cubeUnitsDigit_inverts","lem","cubeUnitsDigit_inverts (m : Nat) :\n  (cubeUnitsDigit ⟨m ^ 3 % 10, _⟩).val = m % 10","Feed the lookup the units digit of m³ and it returns m's units digit. Depends only on m % 10, so ten cases settle it.")} (m : Nat) :
+    (cubeUnitsDigit ⟨m ^ 3 % 10, Nat.mod_lt _ (by omega)⟩).val = m % 10 := ${K("by")}
+  ${K("have")} hpow : m ^ 3 % 10 = (m % 10) ^ 3 % 10 := ${K("by")} rw [Nat.pow_mod]
+  ${K("have")} hlt : m % 10 &lt; 10 := Nat.mod_lt _ (by omega)
+  ${C("-- the Digit fed to cubeUnitsDigit depends only on m % 10; enumerate it")}
+  ${T("interval_cases","tac","interval_cases h : (m % 10) <;> simp_all [cubeUnitsDigit]","ten goals, one per value of m % 10","After rewriting m³ % 10 = (m%10)³ % 10, only m % 10 matters; the ten cases each compute out.")} h : (m % 10) ${K("&lt;;&gt;")} simp_all [cubeUnitsDigit]</pre></details>
+<p class="pstep">The tens search · lower bound <span class="n">— whatever it returns doesn't overshoot</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The second glance is a search: count down from 9 and stop at the first digit whose cube still fits under <code>upper</code>. The first thing to establish is that it never overshoots — whatever digit it lands on has a cube at most <code>upper</code>. Because the search is recursive, this is an induction on the countdown: the base case returns 0, whose cube is 0, and each step either accepts a candidate that already satisfies the bound or recurses, where the induction hypothesis carries the guarantee forward.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("findCubeTensHelper_correct","lem","findCubeTensHelper_correct (upper : Nat) (k : Nat) :\n  cubeTable (findCubeTensHelper upper k) ≤ upper","The digit the search returns always has a cube ≤ upper — the lower half of the pinning.")} (upper : Nat) (k : Nat) :
+    ${K("let")} d := findCubeTensHelper upper k
+    cubeTable d ≤ upper := ${K("by")}
+  ${T("induction","tac","induction k with | zero => … | succ k ih => …","two goals: base k = 0 and step k+1","Countdown induction on k; the step gets the induction hypothesis ih for the recursive call.")} k ${K("with")}
+  | zero => simp [findCubeTensHelper, cubeTable]
+  | succ k ih =>
+    simp only [findCubeTensHelper]
+    ${K("split")}
+    · rename_i h
+      ${K("split")}
+      · rename_i h_le
+        ${C("-- candidate d+1 satisfies the bound — return it")}
+        ${K("exact")} h_le
+      · ${C("-- candidate failed, recurse; IH closes it")}
+        ${K("exact")} ih
+    · ${C("-- d+1 ≥ 10: return 0, cubeTable 0 = 0 ≤ upper")}
+      simp [cubeTable]</pre></details>
+<p class="pstep">The tens search · upper bound <span class="n">— no larger digit would have fit</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>A lower bound alone isn't enough: 0 always satisfies it, so we must also show the search picked the <em>largest</em> digit it could. That is maximality — any digit strictly bigger than the result overshoots, its cube exceeds <code>upper</code>. The countdown starts at 9, so a bigger digit is one the search already tried and rejected; the induction walks the countdown and, at each rejected candidate, records that its cube was too big, which then rules out that digit and every larger one.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("findCubeTensHelper_maximal","lem","findCubeTensHelper_maximal (upper : Nat) :\n  ∀ start, start < 10 → ∀ y, y < 10 →\n    (findCubeTensHelper upper start).val < y → y ≤ start →\n    upper < y ^ 3","Any digit larger than the result has a cube > upper — the upper half of the pinning.")} (upper : Nat) :
+    ∀ start, start &lt; 10 → ∀ y, y &lt; 10 →
+      (findCubeTensHelper upper start).val &lt; y → y ≤ start →
+      upper &lt; y ^ 3 := ${K("by")}
+  ${K("intro")} start
+  induction start ${K("with")}
+  | zero =>
+    ${C("-- res = 0, so y &gt; 0 and y ≤ 0 contradict")}
+    ${K("intro")} _ y _ hy hyle
+    omega
+  | succ k ih =>
+    ${K("intro")} hstart y hy10 hy hyle
+    simp only [findCubeTensHelper] ${K("at")} hy
+    split ${K("at")} hy
+    · rename_i h
+      ${C("-- bridge cubeTable lookup to plain (k+1)³ for arithmetic")}
+      ${K("have")} hcube : cubeTable ⟨k + 1, h⟩ = (k + 1) ^ 3 := cubeTable_correct ⟨k + 1, h⟩
+      split ${K("at")} hy
+      · ${C("-- inner if true: res = k+1, so y &gt; k+1 contradicts y ≤ k+1")}
+        ${K("have")} hval : (⟨k + 1, h⟩ : Digit).val = k + 1 := rfl
+        omega
+      · ${C("-- inner if false: (k+1)³ &gt; upper, so any y ≥ k+1 also fails")}
+        rename_i h_nle
+        ${K("have")} h_nle' : upper &lt; (k + 1) ^ 3 := ${K("by")} rw [← hcube]; omega
+        ${T("rcases","tac","rcases Nat.lt_or_ge y (k + 1) with hyk | hyk","two goals: y < k+1 and y ≥ k+1","Splits on whether y is below the failed candidate (recurse) or equal to it (done).")} Nat.lt_or_ge y (k + 1) ${K("with")} hyk | hyk
+        · ${C("-- y &lt; k+1: not yet tried, recurse into IH")}
+          ${K("exact")} ih (by omega) y hy10 hy (by omega)
+        · ${C("-- y = k+1: exactly the candidate that just failed")}
+          ${K("have")} hye : y = k + 1 := ${K("by")} omega
+          subst hye; ${K("exact")} h_nle'
+    · ${C("-- k+1 ≥ 10: impossible since start &lt; 10")}
+      rename_i h; omega</pre></details>
+<p class="pstep">The tens search · pinning the digit <span class="n">— the two bounds meet at one value</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>With both halves in hand the digit is pinned. If <code>a³ ≤ upper &lt; (a+1)³</code>, then the search on a countdown from 9 returns exactly <code>a</code> — no more, no less. The proof is a trichotomy: the result is below <code>a</code>, equal to it, or above it. Maximality kills the low case (it would say <code>a</code> itself overshoots, contradicting <code>a³ ≤ upper</code>), the lower bound kills the high case (the result's cube would exceed <code>upper</code>), and only equality is left standing.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("findCubeTensHelper_eq","lem","findCubeTensHelper_eq (upper a : Nat) (ha : a < 10)\n  (hlo : a ^ 3 ≤ upper) (hhi : upper < (a + 1) ^ 3) :\n  (findCubeTensHelper upper 9).val = a","If a's cube fits but (a+1)'s doesn't, the descending search lands exactly on a. Proved from correctness (lower bound) and maximality (upper bound).")} (upper a : Nat) (ha : a &lt; 10)
+    (hlo : a ^ 3 ≤ upper) (hhi : upper &lt; (a + 1) ^ 3) :
+    (findCubeTensHelper upper 9).val = a := ${K("by")}
+  ${K("set")} r := (findCubeTensHelper upper 9).val ${K("with")} hr
+  ${K("have")} hr9 : r &lt; 10 := (findCubeTensHelper upper 9).2
+  ${T("rcases","tac","rcases Nat.lt_trichotomy r a with hlt | heq | hgt","three goals: r < a, r = a, r > a","The result is below, equal to, or above a; only the middle case survives.")} Nat.lt_trichotomy r a ${K("with")} hlt | heq | hgt
+  · ${C("-- r &lt; a: maximality says a (a larger digit) fails, i.e. upper &lt; a³,")}
+    ${C("-- contradicting hlo : a³ ≤ upper.")}
+    ${K("exfalso")}
+    ${K("have")} hmax := findCubeTensHelper_maximal upper 9 (by omega) a ha
+                   (by rw [← hr]; exact hlt) (by omega)
+    omega
+  · ${K("exact")} heq
+  · ${C("-- r &gt; a: correctness says r³ ≤ upper, but r ≥ a+1 ⇒ r³ ≥ (a+1)³ &gt; upper.")}
+    ${K("exfalso")}
+    ${K("have")} hcorr : cubeTable (findCubeTensHelper upper 9) ≤ upper :=
+      findCubeTensHelper_correct upper 9
+    rw [cubeTable_correct] ${K("at")} hcorr
+    rw [← hr] ${K("at")} hcorr          ${C("-- fold (findCubeTensHelper upper 9).val → r")}
+    ${C("-- hcorr : r ^ 3 ≤ upper")}
+    ${K("have")} hmono : (a + 1) ^ 3 ≤ r ^ 3 := Nat.pow_le_pow_left (by omega) 3
+    omega</pre></details>
+<p class="pstep">The tens digit <span class="n">— recovering m/10 from m³/1000</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Now specialise the pinning lemma to the actual trick. The tens glance drops the last three digits of m³ — that is <code>m³ / 1000</code> — and searches; we claim it returns <code>m / 10</code>, the root's tens digit. Writing <code>a = m / 10</code>, the two bounds the pinning lemma needs are pure algebra flowing from <code>(10a)³ = 1000·a³</code>: since <code>10a ≤ m &lt; 10(a+1)</code>, cubing gives <code>a³ ≤ m³/1000</code> and <code>m³/1000 &lt; (a+1)³</code>. Feed those in and the digit is <code>a</code>.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("cubeTensDigit_eq","lem","cubeTensDigit_eq (m : Nat) (hm : m ≤ 99) :\n  (findCubeTensHelper (m ^ 3 / 1000) 9).val = m / 10","The tens search on m³/1000 returns m/10. Feeds the two (10a)³ = 1000a³ bounds into the pinning lemma.")} (m : Nat) (hm : m ≤ 99) :
+    (findCubeTensHelper (m ^ 3 / 1000) 9).val = m / 10 := ${K("by")}
+  ${K("set")} a := m / 10 ${K("with")} ha_def
+  ${K("have")} ha10 : a &lt; 10 := ${K("by")} omega
+  ${K("refine")} ${T("findCubeTensHelper_eq","lem","findCubeTensHelper_eq (m ^ 3 / 1000) a ha10 ?_ ?_","two goals: the lower and upper bound","The pinning lemma, leaving a³ ≤ m³/1000 and m³/1000 < (a+1)³ to prove.")} (m ^ 3 / 1000) a ha10 ?_ ?_
+  · ${C("-- Lower bound: a³ ≤ m³ / 1000")}
+    ${K("have")} hmab : 10 * a ≤ m := ${K("by")} omega
+    ${K("have")} hle : (10 * a) ^ 3 ≤ m ^ 3 := Nat.pow_le_pow_left hmab 3
+    ${K("have")} hexp : (10 * a) ^ 3 = 1000 * a ^ 3 := ${K("by")} ring
+    rw [hexp] ${K("at")} hle
+    ${C("-- hle : 1000 * a ^ 3 ≤ m ^ 3")}
+    omega
+  · ${C("-- Upper bound: m^3 / 1000 &lt; (a+1)^3")}
+    ${K("have")} hmlt : m &lt; 10 * (a + 1) := ${K("by")} omega
+    ${K("have")} hlt : m ^ 3 &lt; (10 * (a + 1)) ^ 3 := Nat.pow_lt_pow_left hmlt (by omega)
+    ${K("have")} hexp : (10 * (a + 1)) ^ 3 = 1000 * (a + 1) ^ 3 := ${K("by")} ring
+    rw [hexp] ${K("at")} hlt
+    ${C("-- hlt : m ^ 3 &lt; 1000 * (a + 1) ^ 3")}
+    omega</pre></details>
+<p class="pstep">Assembling the two digits <span class="n">— units + tens = the root</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Finally the two glances come together. A small helper says that for positive <code>n</code> the first stored digit of <code>fromNat n</code> is <code>n % 10</code> — the digit the units lookup consumes. Armed with that, the main theorem is bookkeeping: the units lookup delivers <code>m % 10</code>, the tens search delivers <code>m / 10</code>, and place value reassembles them since <code>(m % 10) + 10·(m / 10) = m</code>. This proves exactly what the lazy proof did, but now with the mechanism laid bare and no mention of any particular number.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("fromNat_head_pos","lem","fromNat_head_pos (n : Nat) (hn : 0 < n) :\n  fromNat n = ⟨n % 10, _⟩ :: fromNat (n / 10)","For positive n the first stored digit is n % 10. Unfolds one step of fromNat after peeling off the successor.")} (n : Nat) (hn : 0 &lt; n) :
+    fromNat n = ⟨n % 10, by omega⟩ :: fromNat (n / 10) := ${K("by")}
+  ${T("obtain","tac","obtain ⟨k, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : n ≠ 0)","n replaced by k + 1","Rewrites the positive n as a successor so fromNat's defining equation fires.")} ⟨k, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : n ≠ 0)
+  rw [fromNat]
+
+${K("theorem")} ${T("cubeRootTrick_correct2","lem","cubeRootTrick_correct2 (m : Nat) (hm : m ≤ 99) (hm0 : 0 < m) :\n  cubeRootVal (fromNat (m ^ 3)) = m","The same result as Layer 1, proved structurally: each glance is shown correct, then the two digits are reassembled.")} (m : Nat) (hm : m ≤ 99) (hm0 : 0 &lt; m) :
+    cubeRootVal (fromNat (m ^ 3)) = m := ${K("by")}
+  ${C("-- tens digit = m/10")}
+  ${K("have")} htens : (cubeTensDigit (fromNat (m ^ 3))).val = m / 10 := ${K("by")}
+    unfold cubeTensDigit; rw [${T("toNat_fromNat","lem","toNat_fromNat : toNat (fromNat n) = n","","Chapter 0's round-trip: reading back the digits of m³ gives m³. Lets the search see m³/1000.")}]; ${K("exact")} cubeTensDigit_eq m hm
+  unfold cubeRootVal cubeRootTrick
+  ${C("-- expose m³'s head digit so the units match reduces")}
+  rw [${T("fromNat_head_pos","lem","fromNat_head_pos (m ^ 3) (by positivity)","fromNat (m³) = ⟨m³ % 10, _⟩ :: fromNat (m³ / 10)","For positive m³ the first stored digit is m³ % 10 — that's the digit the units lookup consumes.")} (m ^ 3) (by positivity)]
+  simp only []
+  rw [${T("cubeUnitsDigit_inverts","lem","cubeUnitsDigit_inverts m","the units lemma, applied","Rewrites the units digit to m % 10.")} m]
+  rw [← fromNat_head_pos (m ^ 3) (by positivity), htens]
+  ${T("omega","tac","omega","(m % 10) + 10 * (m / 10) = m","The two digits reassemble into m — pure arithmetic.")}</pre></details>`; }
+
+/* ---- MCQ engine ---- */
+function mcq(elId,options,correct,onCorrect){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;if(onCorrect)onCorrect();}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+$("cubeImpl").innerHTML=cubeImpl();
+$("proofCube").innerHTML=cubeProof();
+bindTips();
+start();
+
+/* §4 */
+mcq("preMCQ",[
+  {text:"For m ≤ 99, running the trick on m³ returns m: cubeRootVal (fromNat (m³)) = m.",
+   why:"Right — the input is a genuine cube (m³), the bound m ≤ 99 is the trick's scope, and the conclusion is that the recovered root equals m."},
+  {text:"cubeRootVal n = ∛n for every n.",
+   why:"Two problems: n has to be a perfect cube for the trick to mean anything, and ∛ isn't a Nat operation. The honest statement feeds it m³ and asks for m back."},
+  {text:"The trick runs without crashing on any input.",
+   why:"Totality is free — every branch returns a digit. The theorem has to say the answer is right, and only within the 1–99 scope."},
+  {text:"cubeUnitsDigit is a bijection on digits.",
+   why:"That's one ingredient of the units step, not the whole claim — it says nothing about the tens digit or about reassembling the root."},
+],0);
+mcq("unitsMCQ",[
+  {text:"Cubing sends the ten digits to ten distinct units digits, so the map can be read backwards.",
+   why:"Right — d ↦ d³ % 10 is a bijection on 0–9 (0,1,4,5,6,9 fixed; 2↔8, 3↔7). Distinct outputs mean the reverse lookup is unambiguous."},
+  {text:"Because a cube and its root always end in the same digit.",
+   why:"Only for six of the ten digits. 2³ = 8 and 3³ = 27 already break it — the map permutes, it isn't the identity."},
+  {text:"Because the cube's units digit is always smaller than the root's.",
+   why:"No such relation: 2 → 8 grows, 8 → 2 shrinks. Size isn't what makes it work — distinctness is."},
+  {text:"Because you can compute the real cube root and read its last digit.",
+   why:"That would defeat the trick — the whole point is to skip computing the root. The lookup is instant precisely because it needs only the cube's last digit."},
+],0);
+mcq("roadMCQ",[
+  {text:"Exhaustion: check all 100 cases. Cheap to write, but proves that not why, and doesn't scale past 99.",
+   why:"Right — finiteness lets interval_cases + native_decide brute-force it in two lines, at the cost of insight and of any larger ceiling. The chapter pairs it with a structural proof that does explain."},
+  {text:"Induction on m up to 99.",
+   why:"There's no useful inductive step here — the trick for m³ has nothing to say about (m+1)³. Enumeration, not induction, is what finiteness buys."},
+  {text:"Nothing special — you must prove it structurally either way.",
+   why:"Finiteness genuinely unlocks brute force: interval_cases turns the bound into a hundred decidable checks. It's a real (if unsatisfying) proof."},
+  {text:"It lets you skip the precondition m ≤ 99.",
+   why:"The opposite — brute force relies on that bound to have finitely many cases at all. Drop it and there's nothing to enumerate."},
+],0);
+
+/* §6 */
+mcq("endMCQ",[
+  {text:"8 — because 2 and 8 swap.",
+   why:"Right: 8³ = 512 ends in 2, so a cube ending in 2 has a root ending in 8. It's one of the two swaps, 2 ↔ 8."},
+  {text:"2 — the digit is unchanged.",
+   why:"2 is one of the four that move, not one of the six fixed digits. 2³ = 8, not …2, so a cube ending in 2 doesn't have a root ending in 2."},
+  {text:"Can't tell — several roots give a cube ending in 2.",
+   why:"Exactly one does: the map is a bijection, and only 8 cubes to a number ending in 2. That uniqueness is the whole point."},
+  {text:"3 — because 3 and 2 are adjacent.",
+   why:"Adjacency isn't the rule; the swaps are 2 ↔ 8 and 3 ↔ 7. A cube ending in 2 comes from a root ending in 8."},
+],0);
+mcq("thousMCQ",[
+  {text:"Because (10a + b)³ = 1000·a³ + smaller terms, so dividing by 1000 leaves a³ on top.",
+   why:"Right — the tens digit a sits in the 1000·a³ term, and the remaining terms are too small to reach the next thousand. ⌊m³/1000⌋ then has a as its largest fitting cube."},
+  {text:"Because every cube has exactly three trailing digits to ignore.",
+   why:"Cubes vary in length (1³ = 1, 99³ = 970299). The three isn't about trailing zeros — it's the 1000 = 10³ that separates the tens digit's contribution."},
+  {text:"Because the units digit already used up the last digit, leaving three.",
+   why:"The units step used one digit; dropping three is a separate fact about place value, from 10³ = 1000, not from what the units step consumed."},
+  {text:"Because a³ is always a three-digit number.",
+   why:"Not so — 1³ = 1, 9³ = 729. The 1000 is a fixed place-value factor, not the size of a³."},
+],0);
+mcq("ndMCQ",[
+  {text:"fromNat is defined by well-founded recursion, which the kernel's decide won't reduce; native_decide compiles it.",
+   why:"Right — the goal mentions fromNat (m³), and decide can't evaluate a well-founded definition inside the kernel. native_decide compiles to native code and runs it, trusting the compiler as well as the kernel."},
+  {text:"native_decide is always faster, so it's the default choice.",
+   why:"Speed isn't the reason here — correctness is: decide simply gets stuck on fromNat. (Earlier chapters used plain decide happily where nothing well-founded was involved.)"},
+  {text:"Because the numbers are too large for decide.",
+   why:"Six-digit cubes are well within decide's range; the blocker is the shape of fromNat, not the size of the value."},
+  {text:"Because interval_cases requires native_decide to follow it.",
+   why:"They're independent — interval_cases just splits the cases; each could in principle close any way. The forcing issue is fromNat not reducing."},
+],0);
+mcq("combineMCQ",[
+  {text:"units + 10 × tens = (m % 10) + 10 × (m / 10) = m, closed by omega.",
+   why:"Right — cubeUnitsDigit_inverts gives m % 10, cubeTensDigit_eq gives m / 10, and cubeRootVal reads them as units + 10·tens. That sum is m by division-remainder, which omega knows."},
+  {text:"You multiply the two results together.",
+   why:"cubeRootVal adds them with place value (units + 10·tens), not multiply — the tens digit is worth ten, not a factor."},
+  {text:"They must be equal, and their common value is m.",
+   why:"They're generally different — m % 10 and m / 10 aren't equal (for 54, that's 4 and 5). They're two different digits of m, combined by place value."},
+  {text:"cubeTensDigit_eq alone gives m; the units lemma is a sanity check.",
+   why:"The tens lemma only gives m / 10 — it loses the units digit entirely. Both lemmas are load-bearing."},
+],0);
+mcq("squareMCQ",[
+  {text:"Cubing is a bijection on 0–9 — ten digits, ten distinct endings. Squaring collides (2² and 8² both end in 4), so a square's last digit can't pin the root's.",
+   why:"Right — distinct outputs are what let you read the map backwards. Squaring only lands on 0, 1, 4, 5, 6, 9, several of them twice, so a square root's units digit isn't recoverable this way."},
+  {text:"Because a cube is bigger than a square, so its last digit carries more information.",
+   why:"Size is irrelevant — the last digit holds one digit either way. What matters is that cubing's ten outputs are distinct and squaring's are not."},
+  {text:"Because cubes are always odd.",
+   why:"They aren't: 2³ = 8. The units step works because the ten cube-endings are distinct, odd or not."},
+  {text:"Because squaring isn't defined for digits above 5.",
+   why:"Squaring is fine for every digit — 8² = 64. The trouble is that 2² and 8² share the ending 4, a collision cubing never has."},
+],0);
+mcq("downMCQ",[
+  {text:"We want the largest d with d³ ≤ the thousands part; counting down, the first one that fits is already the biggest, so the search stops there.",
+   why:"Right — the same move as the trial-digit search in the division chapter. From 0 upward you'd have to keep checking to be sure you had the maximum; from 9 downward, the first success is the answer."},
+  {text:"Because Lean only allows recursion that counts down.",
+   why:"Either direction is allowed. Downward is about correctness — it makes the first fit the largest — not a language rule."},
+  {text:"Because a digit's cube gets smaller as the digit grows.",
+   why:"The opposite: d³ grows with d. That's exactly why the first cube small enough to fit, coming down from 9, is the largest that fits."},
+  {text:"Because cubeTable is only stored for d ≤ 9.",
+   why:"True but beside the point — both an up-search and a down-search stay within 0–9. Downward is chosen so the first hit is the maximum."},
+],0);
+mcq("maxMCQ",[
+  {text:"Two bounds: the returned digit's cube is ≤ the thousands part (it fits), and any larger digit's cube exceeds it (nothing bigger fits). Only one digit satisfies both.",
+   why:"Right — findCubeTensHelper_correct gives the lower half (the result fits) and findCubeTensHelper_maximal the upper (anything larger overshoots). With a³ ≤ upper < (a+1)³, the answer can only be a."},
+  {text:"By checking all 100 cubes with native_decide.",
+   why:"That's the brute-force proof of the whole trick. The structural tens lemma instead pins the digit with two inequalities, no enumeration."},
+  {text:"Because dividing by 1000 is exact, so the digit is read off directly.",
+   why:"It's floor division, not exact — which is why a search is needed at all. Correctness comes from the two cube bounds."},
+  {text:"By induction on the digits of the cube.",
+   why:"No digit induction happens; the tens result is fixed by the two bounds on cubes — it fits, and the next one doesn't."},
+],0);
+mcq("traceMCQ",[
+  {text:"12 — units 8 → 2, and ⌊1728/1000⌋ = 1 gives tens 1.",
+   why:"Right: 1728 ends in 8, so the root ends in 2 (the 2↔8 swap); the thousands part is 1, whose largest fitting cube is 1³ = 1, so tens = 1. Root 12, and 12³ = 1728."},
+  {text:"18 — read the 1 and the 8 straight off.",
+   why:"That skips both glances. The last digit isn't the root's last digit (8 → 2 via the swap), and the leading part needs the cube search, not a direct read."},
+  {text:"13 — 1728 sits between 1000 and 2197.",
+   why:"13³ = 2197 overshoots 1728. The tens search takes the largest cube that fits in the thousands part (which is 1), giving tens 1."},
+  {text:"11 — roughly the cube root by eye.",
+   why:"11³ = 1331 ≠ 1728. The trick isn't an estimate: units 8→2 and tens 1 give exactly 12."},
+],0);
+
+/* ---- worksheet ---- */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"cube_units", n:1, kind:"compute", title:"Read a cube backwards",
+   prompt:`A perfect cube ending in 3 has a root ending in 7 (since 7³ = 343). The lookup is a plain pattern match, so one decision procedure settles the equality.`,
+   ctx:`<span class="kw">example</span> : cubeUnitsDigit ⟨3,_⟩ = ⟨7,_⟩ := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `The two sides are fully concrete digits with no variables left — nothing to unfold or reason about, just a fact the compiler can check by evaluating the lookup.`,
+     `A single decision procedure that evaluates closed <code>Nat</code>/<code>Fin</code> equalities will close it; think <code>decide</code>.`],
+   sol:`decide`},
+  {ex:"cube_eval", n:2, kind:"compute", title:"Run the whole trick",
+   prompt:`54³ = 157464, and the trick should hand back 54. The statement runs <code>cubeRootVal</code> on <code>fromNat (54³)</code> — a well-founded definition, so reach for the compiled checker.`,
+   ctx:`<span class="kw">example</span> : cubeRootVal (fromNat (54 ^ 3)) = 54 := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `This is still a closed computation, but it grinds through a well-founded definition over a big number — plain evaluation in the kernel would be painfully slow.`,
+     `Use the compiled evaluator, <code>native_decide</code>, rather than <code>decide</code>, so the trick actually runs.`],
+   sol:`native_decide`},
+  {ex:"cube_bij", n:3, kind:"proof", title:"The units lookup really inverts",
+   prompt:`Cubing the looked-up digit and taking its last digit gives you back the digit you started with — for <em>every</em> digit. Ten digits, so exhaust them the way the table proofs did, then simplify with the lookup's definition.`,
+   ctx:`<span class="kw">example</span> (d : Digit) : (cubeUnitsDigit d).val ^ 3 % 10 = d.val := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"fin_cases d <;> …",
+   hints:[
+     `There is a variable <code>d</code> now, but it ranges over only ten possible digits — the same finite-case strategy the earlier table proofs leaned on.`,
+     `Split into every case with <code>fin_cases d</code>, then discharge each with <code>simp</code> pointed at the lookup's definition.`,
+     `The shape is: enumerate the digit, then combine the branches so each one simplifies away using <code>cubeUnitsDigit</code> — one combinator chaining the case split into the simplifier.`],
+   sol:`fin_cases d &lt;;&gt; simp [cubeUnitsDigit]`},
+  {ex:"cube_cite", n:4, kind:"proof", title:"Cite the finished theorem",
+   prompt:`The book already proved the trick correct for all of 1–99 (the brute-force <code>cubeRootTrick_correct1</code>). Close this goal by handing that theorem its two arguments — the number and the bound.`,
+   ctx:`<span class="kw">example</span> (m : Nat) (hm : m ≤ 99) : cubeRootVal (fromNat (m ^ 3)) = m := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"exact …",
+   hints:[
+     `You do not have to re-prove anything: the general result for 1–99 is already a named theorem earlier in the book, and this goal is exactly its conclusion.`,
+     `Supply that theorem with <code>exact</code>, naming <code>cubeRootTrick_correct1</code>.`],
+   sol:`exact cubeRootTrick_correct1 m hm`},
+  {ex:"cube_tens", n:5, kind:"compute", title:"The tens search on its own",
+   prompt:`The thousands part of 157464 is 157, and the tens search returns the largest digit whose cube fits — <code>5</code>, since <code>5³ = 125 ≤ 157 &lt; 216 = 6³</code>. The search is a plain computation, so one decision procedure evaluates it.`,
+   ctx:`<span class="kw">example</span> : findCubeTensHelper 157 9 = ⟨5,_⟩ := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `The tens search is a straightforward recursive scan with no free variables here — the answer is pinned down entirely by evaluating it on <code>157</code>.`,
+     `One decision procedure evaluates the closed goal; <code>decide</code> handles this size without needing the compiled version.`],
+   sol:`decide`},
+  {ex:"cube_whole", n:6, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`A fresh fact about the trick: the units lookup is its own inverse — apply <code>cubeUnitsDigit</code> twice and you get the digit you started with (2↔8, 3↔7, the rest fixed). Prove it.`,
+   ctx:`<span class="kw">example</span> (d : Digit) : cubeUnitsDigit (cubeUnitsDigit d) = d := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"ten digits — split, then decide…",
+   hints:[
+     `There are only ten digits, so try them all — the same finite-case approach as the table proofs.`,
+     `Split with <code>fin_cases d</code>, and since each case is a concrete computation, close them all with <code>decide</code>.`],
+   sol:`fin_cases d &lt;;&gt; decide`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script async src="https://www.instagram.com/embed.js"></script>
+<script src="book.js"></script>
+</body>
+</html>

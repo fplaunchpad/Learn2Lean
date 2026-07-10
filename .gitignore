@@ -1,8 +1,10 @@
 # Lake build artifacts and downloaded packages
 .lake/
 
-# Claude Code local files / settings (do not commit)
+# Local editor / tooling settings (do not commit)
 .claude/
+.vscode/
+.idea/
 
 # Note: lake-manifest.json is intentionally committed (tracked) so that
 # `lake exe cache get` resolves the exact Mathlib revision and forkers

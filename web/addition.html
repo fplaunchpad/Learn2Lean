@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Vertical Addition — described, implemented, visualised, proved</title>
+<meta name="description" content="The school addition algorithm written as a Lean 4 program and proved correct — with a step-by-step visualiser, comprehension checks, and exercises."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>➕</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:6px 0}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:110px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .opSym{color:var(--orange);font-size:18px}
+  .board{display:flex;flex-direction:column;align-items:flex-end;width:max-content;background:#000;border-radius:8px;padding:12px 16px}
+  .row{display:flex;justify-content:flex-end;align-items:center}
+  .gut{width:22px;text-align:center;color:#fff;font-size:18px}
+  .cell{width:36px;height:36px;margin:3px;border-radius:5px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17px;color:#ccc}
+  .cell.act{border-color:var(--yellow);color:var(--yellow)} .cell.future{border-color:#222;color:#555} .cell.blank{border:none}
+  .car{width:36px;height:15px;margin:3px;text-align:center;font-size:11px;color:var(--yellow)}
+  .hr{height:0;border:0;border-top:2px solid #fff;margin:6px 0;width:100%}
+  .nav{display:flex;align-items:center;gap:12px;margin-top:12px;color:var(--muted);font-size:14px}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:16px}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:15px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff} pre.lean .ph{color:var(--yellow)}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:430px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin-top:10px;font-size:13.5px;color:#cfe7ec;max-width:520px}
+  .stepdetail b{color:var(--yellow)}
+  .worked{display:grid;grid-template-columns:auto 22px repeat(3,30px);align-items:center;width:max-content;background:#000;border:1px solid var(--line);border-radius:10px;padding:14px 22px 16px;margin:16px auto;font-size:23px;font-variant-numeric:tabular-nums}
+  ul.steps{font-size:13px;color:var(--muted);margin:10px 0;padding-left:20px}
+  ul.steps li{margin:4px 0}
+  .worked span{text-align:center}
+  .worked .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding-right:14px}
+  .worked .c{color:var(--yellow);font-size:13px;line-height:15px;height:15px}
+  .worked .op{color:var(--orange)} .worked .s{color:var(--green);font-weight:600}
+  .worked .rule{grid-column:2 / -1;height:0;border-top:2px solid #fff;margin:6px 0}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .reveal{display:none;margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .panel{background:#121212;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:13px;margin-top:10px;width:max-content;min-width:300px}
+  .panel .eq{color:var(--yellow);margin:3px 0} .panel .ok{color:var(--green);font-weight:bold} .panel .no{color:var(--red);font-weight:bold}
+  .small{font-size:13px;color:var(--muted)}
+  textarea.led{width:100%;min-height:48px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  /* ---- notebook worksheet ---- */
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a> · <a href="prologue.html">Ch 0</a></p>
+  <h1>Vertical Addition</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the algorithm does</h2>
+  <p>You line the two numbers up by their right edge and add them column by column, starting from the units.
+     Whenever a column's total reaches ten or more, you write down its last digit and <strong>carry</strong> a 1
+     into the column to its left. The carry is the only thing that crosses from one column into the next. It's what
+     makes a long addition more than a row of separate single-digit sums, and it's what both the program and the
+     proof have to keep track of.</p>
+  <p>Take <code>158 + 47</code>. Working right to left, the carry (in
+     <span style="color:var(--yellow)">yellow</span>) is the one digit that crosses into the next column:</p>
+  <div class="worked" role="img" aria-label="158 + 47 = 205, worked column by column with carries of 1 into the tens and hundreds">
+    <span class="lbl">carry</span><span></span><span class="c">1</span><span class="c">1</span><span class="c"></span>
+    <span class="lbl"></span><span></span><span>1</span><span>5</span><span>8</span>
+    <span class="lbl"></span><span class="op">+</span><span></span><span>4</span><span>7</span>
+    <span class="rule"></span>
+    <span class="lbl"></span><span></span><span class="s">2</span><span class="s">0</span><span class="s">5</span>
+  </div>
+  <ul class="steps">
+    <li>Units: 8 + 7 = 15 → write <span style="color:var(--green)">5</span>, carry <span style="color:var(--yellow)">1</span>.</li>
+    <li>Tens: 5 + 4 + 1 = 10 → write <span style="color:var(--green)">0</span>, carry <span style="color:var(--yellow)">1</span>.</li>
+    <li>Hundreds: 1 + 0 + 1 = <span style="color:var(--green)">2</span>. &nbsp; Answer <span style="color:var(--green)">205</span> — the example the visualiser below is set to.</li>
+  </ul>
+  <div class="note"><b>A note on the single-digit sums.</b> When you added <code>8 + 7</code> above, you didn't count up
+     from 8 seven times — you <em>recalled</em> that it makes 15. That memorised table is the real primitive of hand
+     addition, so the code takes it as the primitive too: a 100-entry lookup, not Lean's built-in counting of
+     successors. This is the book's guiding choice — mirror the paper method — spelled out in
+     <a href="prologue.html#repr">the prologue</a>.</div>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>Addition is built in three layers. Each one is proved correct before the next is placed on top of it.</p>
+  <div id="addAlgo"></div>
+  <div class="note">The <code>0</code> and <code>1</code> above are digits; the short proofs that they lie below 10
+     are left out here for readability. When one list runs out, the algorithm keeps going with an implicit
+     <code>0</code>. That is how it adds numbers of different lengths, and how a leftover carry becomes a new
+     leading digit, as in <code>99 + 1 = 100</code>. In the repo the table also carries two catch-all cases for
+     values ≥ 10, dismissed as impossible (a <code>Digit</code> is below 10 by construction) — Lean's pattern
+     checker demands them.</div>
+  <p>Lean also asks for a guarantee that the recursion stops: the measure is the combined length of the two lists,
+     which strictly decreases at every recursive call.</p>
+
+  <!-- 3. VISUALIZATION + INTUITION -->
+  <h2>3 · See it run — and why it's correct</h2>
+  <p>Step through one column at a time and watch the invariant panel beside the grid. That relationship never breaks —
+     and that's exactly why the algorithm is correct.</p>
+  <div class="stage">
+    <div class="controls">
+      <input class="num" id="opA" value="158"/><span class="opSym">+</span><input class="num" id="opB" value="47"/>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="srow">
+      <div class="board" id="board"></div>
+      <div class="ipanel" id="ipanel"></div>
+    </div>
+    <div class="stepdetail" id="detail"></div>
+  </div>
+  <p>After the lowest <em>k</em> columns, everything read off the two inputs so far is accounted for by the result
+     so far <em>plus</em> the carry you are still holding. That carry is worth a full place value
+     <code>10ᵏ</code>, because it belongs to the next column:</p>
+  <p style="text-align:center;color:var(--yellow)">aₖ + bₖ = resultₖ + carry × 10ᵏ.</p>
+  <p>This is the <strong>invariant</strong>. Each column re-establishes it, so it holds all the way to the end,
+     where no digits and no carry remain and it collapses to exactly <code>a + b = result</code>. Correctness here
+     doesn't mean "it looks right on examples." It means "this one relationship is preserved at every step, and it
+     says what we want at the finish."</p>
+
+  <!-- 4. FORMAL PROOF -->
+  <h2>4 · The proof</h2>
+  <p>Same three layers as the algorithm — but here each layer comes in two parts. First <strong>the argument</strong>
+     in plain words: read just these and you'll understand why the algorithm is correct. Then, folded underneath,
+     <strong>the full Lean proof</strong>, for anyone who wants the machine-checked details. You can follow the whole
+     chapter without opening a single dropdown.</p>
+  <p class="small">In the Lean, goal states in the tooltips are lightly abbreviated — · for *, and c' names this
+     column's carry-out — the shapes are what matter.</p>
+  <p>Note the theorem reads the carry the other way round from §3. There the carry was waiting to enter the
+     next column, worth <code>10ᵏ</code> of the whole number; here the theorem speaks about the columns still
+     to come, where the incoming carry is worth exactly one unit at the current column. They are two views of
+     the same bookkeeping — multiply the theorem's statement for a tail by <code>10ᵏ</code> and you recover
+     the §3 panel.</p>
+  <div id="proofAdd"></div>
+
+  <!-- 5. TEST THE IDEAS -->
+  <h2>5 · Test the ideas</h2>
+
+  <p style="color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin:22px 0 0">The invariant, and the algorithm</p>
+  <h3>Which statement is the invariant?</h3>
+  <p>Let <code>aₖ, bₖ, rₖ</code> be the numbers formed by the lowest <code>k</code> digits. After <code>k</code>
+     columns, which is always true?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="invMCQ"></div>
+    <div class="reveal" id="invReveal"><p class="small">↑ Step the visualiser in §3 — you'll see this exact equation hold after every column.</p></div>
+  </div>
+
+  <h3>What do you induct on?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="indMCQ"></div>
+    <div class="reveal" id="indReveal">
+      <p>Right — a number is a list of digits, so you induct on the list. One subtlety:</p>
+      <div id="ind2MCQ"></div>
+      <div class="reveal" id="ind2Reveal"><div class="note">Exactly. Each recursive column is handed a carry that may be 0 or 1, so the statement must be proved for <em>both</em> — the <code>generalizing carry</code> in the proof above.</div></div>
+    </div>
+  </div>
+
+  <h3>Why the invariant must be exact</h3>
+  <p>Watch the tempting but wrong invariant <code>aₖ + bₖ = rₖ</code> (carry forgotten) as you step:</p>
+  <div class="ex"><span class="tag">OBSERVE</span>
+    <div class="nav"><button class="ghost" id="brPrev">← Prev</button><span id="brLbl"></span><button class="ghost" id="brNext">Next →</button></div>
+    <div class="panel" id="brPanel"></div><div class="fb small" id="brFb"></div>
+  </div>
+
+  <h3>Trace one column of <code>addDigits</code></h3>
+  <p>Pick two digits and a carry-in, predict the <code>(digit, carry-out)</code> the column returns, then reveal the
+     table lookups it actually does.</p>
+  <div class="ex"><span class="tag">PREDICT</span>
+    <div class="controls" style="gap:8px">
+      <code>addDigits</code>
+      <input class="num" id="cdA" value="9" style="width:52px"/>
+      <input class="num" id="cdB" value="9" style="width:52px"/>
+      <button class="ghost" id="cdCin">carry-in = true</button>
+    </div>
+    <div class="controls" style="gap:8px">
+      <span class="small">your guess:</span>
+      <span class="small">digit</span><input class="num" id="cdGd" placeholder="?" style="width:52px"/>
+      <button class="ghost" id="cdGc">carry-out = ?</button>
+      <button id="cdGo">Reveal</button>
+    </div>
+    <div class="panel" id="cdPanel" style="display:none"></div>
+  </div>
+
+  <h3>Inside one column — can both lookups carry?</h3>
+  <p><code>addDigits</code> does up to two table lookups — first <code>a + b</code>, then <code>sum + 1</code> if a
+     carry came in — and reports a carry-out when <em>either</em> did (<code>c1 || c2</code>). Can both be true at once?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="canCarryMCQ"></div></div>
+
+  <h3>When does the answer grow an extra digit?</h3>
+  <p>Which inputs make the result longer than both of them?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="growMCQ"></div></div>
+
+  <h3>Why does the recursion stop?</h3>
+  <p>The recursion of <code>verticalAdd</code> terminates. What convinces Lean?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="termMCQ"></div></div>
+
+  <p style="color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin:30px 0 0">Reading the proof</p>
+  <h3>The shape of the proof</h3>
+  <p>The proof inducts on <code>a</code>, and again on <code>b</code> inside each case. Why this nested, two-list
+     structure?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="structAddMCQ"></div></div>
+
+  <h3>Why enumerate the table, but induct on the number?</h3>
+  <p><code>addTable_correct</code> is proved by <code>fin_cases</code> (all 100 digit pairs), yet
+     <code>verticalAdd_correct</code> is proved by induction. Why the different technique?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="whyFinCasesMCQ"></div></div>
+
+  <!-- 6. WRITE SOME LEAN — worksheet -->
+  <h2>6 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill. Press <b>Run</b> and Lean compiles
+     your code on the server. <b>Run all</b> checks every cell in turn, <b>Reset all</b> restores the blank
+     cells, and every cell hides a <em>reference solution</em> you can reveal once you've tried.
+     <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>. The first run is
+     slow: Lean is cold-loading Mathlib.)</span></p>
+  <div class="note"><b>When Lean complains.</b> The checker shows Lean's first error, and a few come up again and
+     again. <em>“unsolved goals”</em> with a <code>⊢</code> line means your tactics ran but something is still left to
+     prove — read the goal after the turnstile. <em>“type mismatch”</em> means a term of the wrong shape (often a
+     missing argument, or a value where a proof was wanted). <em>“unknown identifier”</em> is a typo or a lemma not in
+     scope. <em>“ring failed” / “linarith failed”</em> means that tactic couldn't finish — usually it needs a rewrite
+     first, or it isn't the right tool. The message names the line; start there, and read the <em>goal state</em>, not
+     just the red text.</div>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proof is exactly the one in §4 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run it in VS Code.</p>
+
+  <div class="pager">
+    <a href="prologue.html">← Reading Lean Code</a>
+    <a href="cover.html">Contents</a>
+    <a href="subtraction.html">Vertical Subtraction →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+const digitAt=(s,c)=>{const i=s.length-1-c;return i>=0?+s[i]:0;};
+function computeAdd(a,b){let i=a.length-1,j=b.length-1,carry=0,c=0;const result=[],cin=[];
+  while(i>=0||j>=0||carry>0){cin[c]=carry;const s=(i>=0?+a[i]:0)+(j>=0?+b[j]:0)+carry;result[c]=s%10;carry=(s/10|0);i--;j--;c++;}
+  if(c===0){result[0]=0;cin[0]=0;c=1;}return{N:c,result,cin};}
+const pref=(s,k)=>{const t=s.slice(-k);return BigInt(t===""?"0":t);};
+const sup=k=>(""+k).split("").map(d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[+d]).join("");
+
+const S={a:"158",b:"47",d:null,step:0};
+function render(){
+  const d=S.d,N=d.N;let h="";
+  h+='<div class="row"><div class="gut"></div>';for(let c=N-1;c>=0;c--)h+=`<div class="car">${(c<=S.step&&d.cin[c])?"1":""}</div>`;h+='</div>';
+  h+='<div class="row"><div class="gut"></div>';for(let c=N-1;c>=0;c--){const w=c<S.a.length,cl=c===S.step?"act":(c>S.step?"future":"");h+=`<div class="cell ${w?cl:'blank'}">${w?digitAt(S.a,c):""}</div>`;}h+='</div>';
+  h+='<div class="row"><div class="gut opSym">+</div>';for(let c=N-1;c>=0;c--){const w=c<S.b.length,cl=c===S.step?"act":(c>S.step?"future":"");h+=`<div class="cell ${w?cl:'blank'}">${w?digitAt(S.b,c):""}</div>`;}h+='</div><div class="hr"></div>';
+  h+='<div class="row"><div class="gut"></div>';for(let c=N-1;c>=0;c--){let t,cl;if(c<=S.step){t=d.result[c];cl=c===S.step?"act":"";}else{t="?";cl="future";}h+=`<div class="cell ${cl}">${t}</div>`;}h+='</div>';
+  $("board").innerHTML=h;
+  const k=S.step+1,rStr=d.result.slice(0,k).reverse().join("");
+  const pa=pref(S.a,k),pb=pref(S.b,k),pr=pref(rStr,k),carry=BigInt(d.cin[k]||0),pv=10n**BigInt(k);
+  const L=pa+pb,R=pr+carry*pv;
+  $("ipanel").innerHTML=
+    `<div class="ititle">Invariant — after ${k} column${k>1?"s":""}</div>`+
+    `<div class="igen">a + b &nbsp;=&nbsp; result + carry × 10${sup(k)} &nbsp;&nbsp;(lowest ${k} digit${k>1?"s":""})</div>`+
+    `<div class="ieq">${pa} + ${pb} = ${pr} + ${carry} × ${pv}</div>`+
+    `<div class="ieq">${L} = ${R}</div>`+
+    (L===R?`<div class="iok">✓ holds</div>`:`<div class="ino">✗ violated</div>`);
+  const aD=S.step<S.a.length?digitAt(S.a,S.step):0,bD=S.step<S.b.length?digitAt(S.b,S.step):0,ci=d.cin[S.step]||0,sm=aD+bD+ci,co=sm/10|0;
+  $("detail").innerHTML=`Column ${S.step+1}: ${aD} + ${bD}${ci?` + carry ${ci}`:""} = ${sm} → write <b>${sm%10}</b>${co?`, carry <b>${co}</b>`:""}.`;
+  $("lbl").textContent=`column ${S.step+1} of ${N}`;$("prev").disabled=S.step<=0;$("next").disabled=S.step>=N-1;
+}
+function start(){S.a=clean($("opA").value);S.b=clean($("opB").value);S.d=computeAdd(S.a,S.b);S.step=0;render();}
+$("go").onclick=start;$("prev").onclick=()=>{if(S.step>0){S.step--;render();}};$("next").onclick=()=>{if(S.step<S.d.N-1){S.step++;render();}};
+[$("opA"),$("opB")].forEach(e=>e.addEventListener("keydown",ev=>{if(ev.key==="Enter")start();}));
+
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+function addAlgo(){ return `<p class="pstep">Layer 1 · The single-digit sums <span class="n">— a 100-entry lookup table</span></p>
+<p><code>addTable</code> covers every pair of digits from 0 to 9, returning the result digit together with whether the sum carried.</p>
+<pre class="lean">${K("def")} ${T("addTable","lem","addTable : Digit → Digit → Digit × Bool","","The 100-entry single-digit addition table; each pair of digits maps to a result digit and a carry.")} : Digit → Digit → Digit × Bool
+  | ⟨0,_⟩, ⟨0,_⟩ => (0, false)          ${C("-- 0 + 0 = 0, no carry")}
+  | ⟨7,_⟩, ⟨8,_⟩ => (5, true)           ${C("-- 7 + 8 = 15 → digit 5, carry")}
+  | ⟨9,_⟩, ⟨9,_⟩ => (8, true)           ${C("-- 9 + 9 = 18 → digit 8, carry")}
+  | ...                                 ${C("-- all 100 digit pairs")}</pre>
+<p class="pstep">Layer 2 · One column <span class="n">— two digits and an incoming carry</span></p>
+<p><code>addDigits</code> uses at most two table lookups: it adds the digits, then adds one more if a carry arrived. It receives a carry and also returns one, and that symmetry is what lets the single-column adders chain into the full algorithm, each column feeding the next.</p>
+<pre class="lean">${K("def")} ${T("addDigits","lem","addDigits (a b : Digit) (carry : Bool) : Digit × Bool","","Adds two digits and an incoming carry with at most two table lookups, returning the result digit and the carry-out.")} (a b : Digit) (carry : Bool) : Digit × Bool :=
+  ${K("let")} (sum, c1) := ${T("addTable","lem","addTable : Digit → Digit → Digit × Bool","","The 100-entry single-digit addition table; each pair of digits maps to a result digit and a carry.")} a b      ${C("-- add the two digits")}
+  ${K("match")} carry ${K("with")}
+  | false => (sum, c1)                  ${C("-- no incoming carry, done")}
+  | true  => ${K("let")} (sum', c2) := addTable sum 1   ${C("-- otherwise add the carried 1")}
+             (sum', c1 || c2)           ${C("-- carry out if either step did")}</pre>
+<p class="pstep">Layer 3 · Whole numbers <span class="n">— pass the carry along the columns</span></p>
+<p><code>verticalAdd</code> walks the two digit lists together, passing the carry out of each column into the next.
+Remember the head of the list is the units digit — the lists run opposite to how you write numbers, so
+"walk the list" means "work right to left", and <code>[⟨3⟩,⟨2⟩,⟨1⟩]</code> is 123.</p>
+<pre class="lean">${K("def")} ${T("verticalAdd","lem","verticalAdd : MultiDigit → MultiDigit → Bool → MultiDigit","","Column-wise addition of two digit lists with a running carry; a leftover carry becomes a new leading digit.")} : MultiDigit → MultiDigit → Bool → MultiDigit
+  | [],      [],      false => []        ${C("-- both empty, no carry")}
+  | [],      [],      true  => [1]       ${C("-- leftover carry → new digit")}
+  | [],      b :: bs, c => ${K("let")} (d, c') := addDigits 0 b c;  d :: verticalAdd [] bs c'
+  | a :: as, [],      c => ${K("let")} (d, c') := addDigits a 0 c;  d :: verticalAdd as [] c'
+  | a :: as, b :: bs, c => ${K("let")} (d, c') := addDigits a b c;  d :: verticalAdd as bs c'</pre>`; }
+
+function buildAddProof(){ return `<p class="pstep">Layer 1 · The single-digit table <span class="n">— all 100 entries, checked one by one</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>There are only a hundred pairs of single digits, so there is nothing to be clever about — Lean checks every pair by computation. For each one, the table's stored (digit, carry) has to read back as the true sum: 7 + 8 is stored as (5, carry), and 5 + 10·1 = 15. Brute force is a perfectly good proof when the cases are finite.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Every table entry records the right (digit, carry). Checked by brute force.")}
+${K("theorem")} ${T("addTable_correct","lem","addTable_correct (a b : Digit) :\n  (addTable a b).1.val + 10·carryVal (addTable a b).2  =  a.val + b.val","Reads the table's (digit, carry) back as a number — digit + 10·carry — and asks that it equal a + b. This is what makes the table trustworthy.")} (a b : Digit) :
+    (addTable a b).1.val + 10 * carryVal (addTable a b).2 = a.val + b.val := ${K("by")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b","100 fully concrete goals, e.g.\n⊢ (addTable ⟨7⟩ ⟨8⟩).1.val + 10·carryVal (addTable ⟨7⟩ ⟨8⟩).2 = 7 + 8","Replaces a by each of 0…9, then b likewise — 10 × 10 = 100 goals, no variables left.")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("simp","tac","simp [addTable, carryVal]","each concrete goal, e.g.  5 + 10·1 = 7 + 8  →  15 = 15","Unfolds the single entry the concrete digits name, evaluates carryVal, and the numeric identity closes on its own.")} [addTable, carryVal]</pre></details>
+  <p class="pstep">Layer 2 · One column <span class="n">— 200 cases: each digit pair, with carry 0 and 1</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>One column adds two digits and an incoming carry, with at most two table lookups. We want the same guarantee a level up: the column's (digit, carry-out) reads back as a + b + the carry-in. Still finite — a hundred digit pairs times two carry values, two hundred cases — so again Lean checks them all. The one new part is that each case leans on Layer 1's fact about the table.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- One column: two digits + an incoming carry. Same brute force, ×2 for the carry bit.")}
+${K("theorem")} ${T("addDigits_correct","lem","addDigits_correct (a b : Digit) (carry : Bool) :\n  (addDigits a b carry).1.val + 10·carryVal (…).2  =  a.val + b.val + carryVal carry","The column's (digit, carry-out), read as digit + 10·carry-out, equals a + b + the carry-in. Proved on top of addTable_correct.")} (a b : Digit) (carry : Bool) :
+    (addDigits a b carry).1.val + 10 * carryVal (addDigits a b carry).2
+      = a.val + b.val + carryVal carry := ${K("by")}
+  have ${T("h1","lem","have h1 := addTable_correct a b","","Layer 1's fact for the first lookup.")} := addTable_correct a b
+  have ${T("h2","lem","have h2 := addTable_correct (addTable a b).1 ⟨1, by omega⟩","","Layer 1 again, for the possible second lookup (adding the carried 1).")} := addTable_correct (addTable a b).1 ⟨1, by omega⟩
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b","100 concrete digit pairs","Enumerate both digits.")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("cases","tac","cases carry","doubles each goal into  carry = false  and  carry = true  — 200 concrete goals","The carry-in is a Bool, so two more cases per pair.")} carry &lt;;&gt;
+  ${T("simp_all","tac","simp_all [addDigits, addTable, carryVal]","every one of the 200 goals reduces to a true equation","Runs addDigits (its at-most-two table lookups) and simplifies hypotheses and goal together until each closes — a variant of simp that simplifies the goal and all hypotheses together, letting them rewrite each other. Layer 3 uses the closely related 'simp … at *'.")} [addDigits, addTable, carryVal]</pre></details>
+  <p class="pstep">Layer 3 · Whole numbers, by induction <span class="n">— the carry-passing argument; the only non-mechanical layer</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Now the one step that isn't brute force: a number can have any number of digits, so you cannot list the cases. Instead we argue by <strong>induction</strong> on the digit list. Empty lists are immediate — no digits is 0, a leftover carry is a single 1. For the step, peel off one column: Layer 2 says that column is right, the inductive hypothesis says the rest of the list is right, and place-value bookkeeping glues them together. One subtlety carries the whole proof: we prove it for an <em>arbitrary</em> incoming carry, not just 0, because each column hands the next a carry that might be 0 or 1 — so the hypothesis must hold for both. That single act of generalising is what makes the induction go through. (A short corollary then fixes the carry to 0 for everyday use.)</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- The theorem: the digit list produced by verticalAdd stands for exactly a + b (+ the carry-in).")}
+${K("theorem")} ${T("verticalAdd_correct","lem","verticalAdd_correct (a b : MultiDigit) (carry : Bool) :\n  toNat (verticalAdd a b carry) = toNat a + toNat b + carryVal carry","Stated through toNat — the same place-value bookkeeping as the §3 invariant, stated for the digits still to process.")} (a b : MultiDigit) (carry : Bool) :
+    toNat (verticalAdd a b carry) = toNat a + toNat b + carryVal carry := ${K("by")}
+  ${C("-- Induct on a; 'generalizing b carry' re-proves it for EVERY b and carry,")}
+  ${C("-- so the hypothesis survives the different carry each column passes on.")}
+  ${T("induction","tac","induction a generalizing b carry","two goals:   a = []   and   a = a :: as","Induction on the first list. Generalising b and carry is the crux: it strengthens the hypothesis to hold for whatever carry the next column receives.")} a generalizing b carry ${K("with")}
+  | nil =>
+      ${C("-- a is empty; induct on b as well, to handle b being longer.")}
+      ${T("induction","tac","induction b generalizing carry","sub-cases   b = []   and   b = b :: bs","A second induction, since with a empty the length is carried entirely by b.")} b generalizing carry ${K("with")}
+      | nil =>
+          ${C("-- both empty: the result is [] (no carry) or [1] (a leftover carry).")}
+          ${T("cases","tac","cases carry","⊢ toNat (verticalAdd [] [] false) = 0 + 0 + 0\n⊢ toNat (verticalAdd [] [] true)  = 0 + 0 + 1","Split the carry bit into its two values.")} carry &lt;;&gt; ${T("simp","tac","simp [verticalAdd, carryVal]","false → toNat [] = 0 ✓    ·    true → toNat [1] = 1 ✓","Evaluates verticalAdd on the empty lists; both sides close.")} [verticalAdd, carryVal]
+      | cons b bs ihb =>
+          ${C("-- a = [], b = b :: bs: this column adds 0 + b, then we recurse on bs.")}
+          ${T("simp only","tac","simp only [verticalAdd, toNat]","⊢ (addDigits 0 b carry).1.val + 10·toNat (verticalAdd [] bs c')\n     = b.val + 10·toNat bs + carryVal carry","Unfold ONE step: exposes this column's output digit and the recursive call on the tail bs (c' is its carry-out).")} [verticalAdd, toNat]
+          ${C("-- Layer 2, at this column: 0 + b + carry is computed correctly.")}
+          have ${T("hcorrect","lem","hcorrect : (addDigits 0 b carry).1.val + 10·carryVal (addDigits 0 b carry).2\n       = 0 + b.val + carryVal carry","addDigits_correct instantiated at ⟨0⟩, b, carry — the single-column fact for this step.")} := addDigits_correct ⟨0, by omega⟩ b carry
+          ${C("-- the inner IH, at the carry THIS column passes on:")}
+          have hih := ${T("ihb","tac","ihb (addDigits 0 b carry).2","hih : toNat (verticalAdd [] bs c') = toNat [] + toNat bs + carryVal c'   (c' = this column's carry-out)","Applied to c', the carry-out — exactly why we generalised the carry: the hypothesis must hold for the NEW carry, not the original.")} (addDigits ⟨0, by omega⟩ b carry).2
+          ${C("-- reduce carryVal and toNat [] to numbers everywhere; omega does the rest.")}
+          ${T("simp","tac","simp [carryVal, toNat] at *","rewrites carryVal (→ 0/1) and toNat [] (→ 0) in the goal AND in hcorrect, hih","'at *' hits the hypotheses too, so hcorrect and hih become plain arithmetic facts omega can consume.")} [carryVal, toNat] at * ; ${T("omega","tac","omega","goal, hcorrect, hih are now linear in the digit values and toNat bs","Combines 'this column is right' (hcorrect) with 'the tail is right' (hih) into the place-value identity; the arithmetic is linear, so omega closes it.")}
+  | cons a as iha =>
+      ${C("-- a = a :: as: induct on b. Both branches mirror the two above, with a in place of the 0.")}
+      induction b ${K("with")}
+      | nil =>
+          ${C("-- a :: as against []: this column adds a + 0. Same four moves, using the OUTER IH iha.")}
+          simp only [verticalAdd, toNat]
+          have hcorrect := addDigits_correct a ⟨0, by omega⟩ carry
+          have hih := ${T("iha","tac","iha [] (addDigits a 0 carry).2","hih : toNat (verticalAdd as [] c') = toNat as + 0 + carryVal c'","The outer IH, on the shorter list as, at this column's carry-out.")} [] (addDigits a ⟨0, by omega⟩ carry).2
+          simp [carryVal, toNat] at * ; omega
+      | cons b bs _ =>
+          ${C("-- the general column: both lists have a digit — a + b + carry, then recurse on both tails.")}
+          ${T("simp only","tac","simp only [verticalAdd, toNat]","⊢ (addDigits a b carry).1.val + 10·toNat (verticalAdd as bs c')\n     = a.val + 10·toNat as + (b.val + 10·toNat bs) + carryVal carry","Peels off this column's digit and the recursive call on the tails as, bs.")} [verticalAdd, toNat]
+          ${C("-- this column is correct (Layer 2)…")}
+          have ${T("hcorrect","lem","hcorrect : (addDigits a b carry).1.val + 10·carryVal (…).2 = a.val + b.val + carryVal carry","addDigits_correct at the current digits a, b and carry.")} := ${T("addDigits_correct","lem","addDigits_correct a b carry","the single-column fact for the current digits","Layer 2, instantiated here.")} a b carry
+          ${C("-- …and both tails are already correct (IH at the new carry).")}
+          have hih := ${T("iha","tac","iha bs (addDigits a b carry).2","hih : toNat (verticalAdd as bs c') = toNat as + toNat bs + carryVal c'","The IH on both tails, at this column's carry-out c'.")} bs (addDigits a b carry).2
+          ${T("simp","tac","simp [carryVal, toNat] at *","hcorrect, hih and the goal all become plain Nat arithmetic","")} [carryVal, toNat] at * ; ${T("omega","tac","omega","⊢ digit + 10·(tail sum) = a + b + carry-in","Adds the current column (hcorrect) onto the already-correct tails (hih); the place-value bookkeeping is linear, so omega finishes.")}</pre></details>`; }
+
+function mcq(elId,options,correct,onCorrect){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;if(onCorrect)onCorrect();}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+const BR={a:"172",b:"91",d:null,k:1};
+function brRender(){const d=BR.d,k=BR.k,rStr=d.result.slice(0,k).reverse().join("");
+  const pa=pref(BR.a,k),pb=pref(BR.b,k),pr=pref(rStr,k),L=pa+pb,R=pr,ok=(L===R);
+  $("brLbl").textContent=`after ${k} column${k>1?"s":""}`;
+  $("brPanel").innerHTML=`<div class="small">(wrong) aₖ + bₖ = rₖ</div><div class="eq">${pa} + ${pb} = ${pr}</div>`+
+    (ok?`<div class="ok">✓ holds</div>`:`<div class="no">✗ ${L} ≠ ${R} — off by ${(L-R).toString()} = a carry × 10${sup(k)}</div>`);
+  $("brPrev").disabled=k<=1;$("brNext").disabled=k>=d.N;
+  $("brFb").innerHTML=ok
+    ?(k<d.N?"✓ holds — no carry has crossed a column yet; keep stepping."
+           :"✓ it agrees again at the very end, once the carry has been absorbed — but an induction needs the relation at every step, and it failed in the middle. That is why the real invariant carries the <code>carry × 10ᵏ</code> term.")
+    :"There it breaks. The gap is exactly the carry this invariant ignores — which is why the correct one needs the <code>carry × 10ᵏ</code> term.";}
+$("brPrev").onclick=()=>{if(BR.k>1){BR.k--;brRender();}};$("brNext").onclick=()=>{if(BR.k<BR.d.N){BR.k++;brRender();}};
+
+$("addAlgo").innerHTML=addAlgo();
+$("proofAdd").innerHTML=buildAddProof();
+bindTips();
+start();
+BR.d=computeAdd(BR.a,BR.b);brRender();
+mcq("invMCQ",[
+  {text:"aₖ + bₖ = rₖ",why:"Forgets the carry. At column 2 of 158+47, a₂+b₂ = 58+47 = 105, but r₂ is only 05."},
+  {text:"aₖ + bₖ = rₖ + carry",why:"Close — but the carry belongs to the next place, so it is worth 10ᵏ, not 1."},
+  {text:"aₖ + bₖ = rₖ + carry × 10ᵏ",why:"The inputs so far equal the result so far plus the pending carry at its place value 10ᵏ."},
+  {text:"aₖ + bₖ + carry = rₖ",why:"The carry is an output of these columns, not an input to them — it belongs on the result side, and at the next place value: carry × 10ᵏ."},
+],2,()=>{$("invReveal").style.display="block";});
+mcq("indMCQ",[
+  {text:"On the list of digits — the empty list, or one digit in front of a shorter list.",why:"This mirrors the algorithm: handle the empty number, then one column on a shorter one."},
+  {text:"On the value of the number (0, 1, 2, …)",why:"The algorithm works on digits, not by counting up — that induction wouldn't follow the code."},
+  {text:"On the number of carries",why:"The carry count isn't known ahead of time and doesn't drive the recursion."},
+],0,()=>{$("indReveal").style.display="block";
+  mcq("ind2MCQ",[
+    {text:"Prove it for an arbitrary carry-in (0 and 1).",why:"Necessary — each recursive column gets a possibly-different carry. A corollary then sets it to 0 for ordinary use."},
+    {text:"Prove it only for carry-in = false.",why:"Then the step gets stuck: the next column may receive a carry of 1, with no hypothesis for it."},
+  ],0,()=>{$("ind2Reveal").style.display="block";});});
+mcq("canCarryMCQ",[
+  {text:"Yes — if both digits are large enough, both lookups carry.",why:"Check it: if a + b carries, its sum digit is at most 8 (the largest sum, 9+9=18, gives digit 8), so sum + 1 ≤ 9 and the second lookup can't carry."},
+  {text:"No — the second lookup never carries at all.",why:"It can: sum = 9 gives 9 + 1 = 10, which carries. The real point is the two can't carry together."},
+  {text:"No — at most one of the two lookups ever carries.",why:"If a + b ≥ 10 the sum digit is ≤ 8, so sum + 1 ≤ 9 won't carry; and if a + b ≤ 9 the first lookup didn't carry. So c1 and c2 are never both true — c1 || c2 just picks whichever fired."},
+],2);
+mcq("growMCQ",[
+  {text:"Only when the final (leftmost) column carries, e.g. 99 + 1 = 100.",why:"That leftover carry lands in the [], [], true case, which emits a fresh leading 1 — the one way the result gets longer than both inputs."},
+  {text:"Never — the result is always as long as the longer input.",why:"99 + 1 = 100 refutes this: three digits out of inputs of length two and one."},
+  {text:"Whenever the two numbers have different lengths.",why:"A length gap alone doesn't add a digit: 12 + 3 = 15 stays two digits."},
+],0);
+mcq("termMCQ",[
+  {text:"The combined length of the two lists drops at every recursive call.",why:"That is the termination_by measure: every case either consumes a digit from a, from b, or from both."},
+  {text:"The carry eventually becomes false.",why:"The carry needn't ever settle — and the [], [], true case doesn't recurse at all. The carry has nothing to do with termination."},
+  {text:"Each list individually shrinks at every call.",why:"In the extension cases one list is already empty and stays length 0 — only the combined length always drops."},
+  {text:"Lean runs the function on examples to see that it stops.",why:"Lean never accepts termination by testing; it demands a decreasing measure."},
+],0);
+mcq("structAddMCQ",[
+  {text:"Lean requires two inductions for any function defined on two lists.",why:"It doesn't — many two-list functions need only one induction. The shape is set by this function, not by Lean."},
+  {text:"The proof follows the shape of the code — and when a is empty the recursion keeps consuming b alone, so b needs its own full induction there.",why:"Right — verticalAdd branches on both lists' shapes. When a = [] the recursion continues down b alone, so b gets a genuine induction with its own hypothesis ihb; in the a :: as case a single split on b suffices because the outer hypothesis iha already covers the tails."},
+  {text:"To make the proof shorter.",why:"It doesn't shorten it; it lines the proof up with the function so each branch can be discharged."},
+  {text:"Because b is always shorter than a.",why:"There is no such relationship; either list can be the longer one."},
+],1);
+mcq("whyFinCasesMCQ",[
+  {text:"Induction is impossible on a Digit.",why:"You could induct on a Fin, but with only ten values it is needless — direct enumeration is simpler."},
+  {text:"omega only works after fin_cases.",why:"omega is unrelated; it closes arithmetic goals whether or not fin_cases was used."},
+  {text:"Pattern matching in the definition requires fin_cases in the proof.",why:"How a function matches its arguments is separate from how its theorem is proved."},
+  {text:"A Digit ranges over only ten values (a finite type), so every case can be listed; a MultiDigit is an unbounded list, which has no finite enumeration and must be proved by induction.",why:"Right: ten digits can be exhausted directly, but a list can be arbitrarily long, so the list-level theorem is proved by induction over its structure."},
+],3);
+
+/* ---- predict one column of addDigits ---- */
+const CD={cin:true,gc:"?"};
+const clampD=v=>{let n=parseInt((v||"").replace(/\D/g,""),10);if(isNaN(n))n=0;return Math.max(0,Math.min(9,n));};
+function colCompute(a,b,cin){
+  const s1=a+b,sum=s1%10,c1=s1>=10;
+  if(!cin)return{digit:sum,carry:c1,s1,sum,c1,cin:false};
+  const s2=sum+1,sum2=s2%10,c2=s2>=10;
+  return{digit:sum2,carry:c1||c2,s1,sum,c1,s2,sum2,c2,cin:true};
+}
+function cdReveal(){
+  const a=clampD($("cdA").value),b=clampD($("cdB").value);$("cdA").value=a;$("cdB").value=b;
+  const r=colCompute(a,b,CD.cin);
+  const gd=$("cdGd").value.trim()===""?null:clampD($("cdGd").value),gc=CD.gc;
+  let h=`<div class="eq">addDigits ${a} ${b} ${r.cin} = (${r.digit}, ${r.carry})</div>`;
+  h+=`<div class="small">lookup 1: ${a} + ${b} = ${r.s1} → digit ${r.sum}, carry ${r.c1}</div>`;
+  if(r.cin)h+=`<div class="small">carry-in = true (worth 1), so lookup 2: ${r.sum} + 1 = ${r.s2} → digit ${r.sum2}, carry ${r.c2}</div>`+
+              `<div class="small">carry-out = c1 || c2 = ${r.c1} || ${r.c2} = ${r.carry}</div>`;
+  else h+=`<div class="small">carry-in = 0, so no second lookup; carry-out = ${r.carry}</div>`;
+  if(gd===null||gc==="?")h+=`<div class="small">(enter a digit guess and toggle a carry-out guess to be graded)</div>`;
+  else{const ok=gd===r.digit&&(gc==="true")===r.carry;
+    h+=ok?`<div class="ok">✓ your prediction (${gd}, ${gc}) matches</div>`
+         :`<div class="no">✗ you said (${gd}, ${gc}); it is (${r.digit}, ${r.carry})</div>`;}
+  $("cdPanel").style.display="block";$("cdPanel").innerHTML=h;
+}
+$("cdCin").onclick=()=>{CD.cin=!CD.cin;$("cdCin").textContent="carry-in = "+CD.cin;};
+$("cdGc").onclick=()=>{CD.gc=CD.gc==="?"?"true":CD.gc==="true"?"false":"?";$("cdGc").textContent="carry-out = "+CD.gc;};
+$("cdGo").onclick=cdReveal;
+[$("cdA"),$("cdB"),$("cdGd")].forEach(e=>e.addEventListener("keydown",ev=>{if(ev.key==="Enter")cdReveal();}));
+
+/* ==================== notebook worksheet (submit-and-check) ==================== */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"add_bcase", n:1, kind:"code", title:"Fill the missing case",
+   prompt:`Complete the missing case of the addition function — the scaffold names it <code>studentAdd</code>, a copy of <code>verticalAdd</code>. The top number is empty and the bottom still has digits; mirror the <code>a :: as, []</code> case shown for reference.`,
+   ctx:`  | [], b :: bs, c =&gt; <span class="ph">‹ your answer ›</span>
+  | a :: as, [], c =&gt; <span class="c">let (d, c') := addDigits a ⟨0, by omega⟩ c;  d :: studentAdd as [] c'</span>`,
+   ph:"the result for the  [], b :: bs, c  case…",
+   hints:[
+     "Look at the reference case printed just below your gap — the <code>a :: as, []</code> case. Yours is its mirror image, with the empty list on the other side.",
+     "The top number is empty, so treat its digit as 0: add the bottom digit with <code>addDigits ⟨0, by omega⟩ b c</code>, which also hands you the outgoing carry.",
+     "Bind that as <code>(d, c')</code>, emit <code>d</code>, and recurse on what's left: <code>d :: studentAdd [] bs c'</code>."],
+   sol:`let (d, c') := addDigits ⟨0, by omega⟩ b c;  d :: studentAdd [] bs c'`},
+  {ex:"add_eval", n:2, kind:"compute", title:"Evaluate one column",
+   prompt:`<code>9 + 9</code> with a carry-in of 1 returns the digit <code>9</code> and a carry-out. The statement is fully decidable, so a single tactic closes it — no lemmas needed.`,
+   ctx:`<span class="kw">example</span> : addDigits ⟨9, by omega⟩ ⟨9, by omega⟩ true = (⟨9, by omega⟩, true) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     "The statement mentions only specific digits — no variables at all. A fully concrete goal like this can be settled purely by computing.",
+     "One decision-procedure tactic evaluates both sides and confirms they're equal. You met it in Chapter 0's tour."],
+   sol:`decide`},
+  {ex:"add_proof", n:3, kind:"proof", title:"Prove the no-carry corollary",
+   prompt:`Specialise the general theorem <code>verticalAdd_correct a b carry</code> to <code>carry = false</code>, and let <code>simp</code> clear the leftover <code>carryVal false</code> (which is 0).`,
+   ctx:`<span class="kw">theorem</span> add_correct_nocarry (a b : MultiDigit) :
+    toNat (verticalAdd a b false) = toNat a + toNat b := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic, using verticalAdd_correct…",
+   hints:[
+     "You don't have to redo the induction — the general theorem <code>verticalAdd_correct</code> already covers every carry. You only need its carry = false case.",
+     "Instantiate it as <code>verticalAdd_correct a b false</code>; the only mismatch left is a stray <code>carryVal false</code>, which is just 0.",
+     "Fold both steps together with <code>simpa using …</code> — simplify, then close with the supplied term."],
+   sol:`simpa using verticalAdd_correct a b false`},
+  {ex:"add_zero", n:4, kind:"proof", title:"Prove by exhausting the cases",
+   prompt:`Adding <code>0</code> to a digit, with no carry, returns it unchanged. There are only ten digits — split on all of them and simplify; recall <code>fin_cases</code> and <code>&lt;;&gt;</code> from <a href="prologue.html#tactics">Chapter 0</a>.`,
+   ctx:`<span class="kw">theorem</span> add_zero_no_carry (a : Digit) :
+    addDigits a ⟨0, by omega⟩ false = (a, false) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"fin_cases a <;> …",
+   hints:[
+     "Adding 0 leaves a digit unchanged — but instead of arguing in general, remember a digit has only ten possible values, so you can just check them all.",
+     "<code>fin_cases a</code> replaces <code>a</code> with 0,1,…,9; then <code>simp [addDigits, addTable]</code> settles each concrete case.",
+     "Run the simp on all ten goals at once by chaining with the combinator: <code>fin_cases a &lt;;&gt; simp […]</code>."],
+   sol:`fin_cases a &lt;;&gt; simp [addDigits, addTable]`},
+  {ex:"add_whole", n:5, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`Your turn with nothing pre-filled. The single-digit addition table is <b>symmetric</b>: <code>a + b</code> and <code>b + a</code> land in the same cell. Prove it. There are only ten choices for each digit — split both into cases and let Lean check every combination. Everything after <code>by</code> is yours.`,
+   ctx:`<span class="kw">theorem</span> addTable_comm (a b : Digit) : addTable a b = addTable b a := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"split a into cases, then b, then finish each…",
+   hints:[
+     "Both <code>a</code> and <code>b</code> are digits, so each has only ten values. Make them concrete and every case turns into a plain computation.",
+     "Recall <code>fin_cases</code> from Chapter 2 — <code>fin_cases a</code> replaces <code>a</code> with 0…9. You'll want to do it to <b>both</b> a and b.",
+     "Chain the splits with the <code>&lt;;&gt;</code> combinator so the second one — and the finisher — run on every goal, then close each concrete goal with <code>decide</code>. It fits on one line."],
+   sol:`fin_cases a &lt;;&gt; fin_cases b &lt;;&gt; decide`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script src="book.js"></script>
+</body>
+</html>

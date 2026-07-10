@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Long Division — described, implemented, visualised, proved</title>
+<meta name="description" content="Long division in Lean 4: the trial-digit search and running remainder, proved to satisfy dividend = quotient × divisor + remainder."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>➗</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:110px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  input.dv{width:56px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .opSym{color:var(--orange);font-size:18px}
+  .board{display:flex;flex-direction:column;align-items:flex-start;width:max-content;background:#000;border-radius:8px;padding:12px 16px;overflow-x:auto;max-width:100%}
+  .row{display:flex;align-items:center}
+  .gut{width:40px;text-align:right;color:#fff;font-size:16px;padding-right:6px}
+  .cell{width:34px;height:34px;margin:2px;border-radius:5px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px;color:#ccc}
+  .cell.act{border-color:var(--yellow);color:var(--yellow)} .cell.q{border-color:var(--green);color:var(--green)} .cell.future{border-color:#222;color:#555}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin-top:10px;font-size:13.5px;color:#cfe7ec;max-width:520px}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:15px;word-break:break-word}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:14px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:440px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .recall{background:#15110a;border-left:3px solid var(--orange);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#ecdcc7;border-radius:0 6px 6px 0}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .small{font-size:13px;color:var(--muted)}
+  .worked{display:grid;grid-template-columns:repeat(4,34px);align-items:center;width:max-content;background:#000;border:1px solid var(--line);border-radius:10px;padding:18px 28px;margin:16px auto;font-size:24px;font-variant-numeric:tabular-nums}
+  ul.steps{font-size:13px;color:var(--muted);margin:10px 0;padding-left:20px}
+  ul.steps li{margin:4px 0}
+  .worked span{text-align:center;height:34px;line-height:34px}
+  .worked .q{color:var(--green);font-weight:600}
+  .worked .rem{color:var(--cyan);font-weight:600}
+  .worked .prod{color:var(--muted)}
+  .worked .minus{color:#8a8a8a}
+  .worked .bring{color:var(--cyan);opacity:.75;font-size:15px}
+  .worked .brtop{border-top:2px solid #fff}
+  .worked .brleft{border-left:2px solid #fff}
+  .worked .uline{border-bottom:2px solid #555}
+  textarea.led{width:100%;min-height:54px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  pre.lean .ph{color:var(--yellow)}
+  /* ---- notebook worksheet ---- */
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a> · <a href="prologue.html">Ch 0</a> · <a href="addition.html">Ch 1</a> · <a href="subtraction.html">Ch 2</a> · <a href="multiplication.html">Ch 3</a></p>
+  <h1>Long Division</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <div class="recall">This is the hardest chapter, and it leans on the others. It uses the times table
+     (<a href="multiplication.html"><code>mulTable</code></a>) to guess each quotient digit, and the multi-digit
+     extension sketched at the end reuses subtraction too. It is also the first algorithm that runs from the
+     <em>most</em> significant digit downward, and the first whose central step is a <em>search</em>. Take it
+     slowly. The visualiser and the "think like a verifier" questions are here to build the picture before the proof.</div>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the algorithm does</h2>
+  <p>Every algorithm so far has swept through the digits from the units upward, because that is the direction a carry
+     or a borrow flows. Division goes the other way: you work from the <strong>top</strong>, the most significant
+     digit, downward — exactly as you were taught to set out a long division.</p>
+  <p>At its centre is a small <strong>search</strong>, the step everyone remembers as the hard one: how many times
+     does the divisor go in? You keep a running <strong>remainder</strong>, and at each column you do three things:</p>
+  <ol>
+    <li><strong>Bring down</strong> the next digit of the dividend, appending it to the remainder to form the current
+        value — if the remainder was 2 and the next digit is 3, the current value is 23.</li>
+    <li><strong>Find the trial digit</strong>: the largest single digit <code>q</code> (from 0 to 9) whose product
+        with the divisor still fits, <code>q × b ≤</code> current value. That <code>q</code> is the next digit of the
+        quotient.</li>
+    <li><strong>Subtract</strong> <code>q × b</code> from the current value. What is left is the new remainder, which
+        you carry to the next column.</li>
+  </ol>
+  <p>You pick the <em>largest</em> digit that fits. That isn't fussiness; it's what makes the digit the right one.
+     If <code>q</code> is the largest digit with <code>q × b ≤</code> value, then one more is too big:
+     <code>value &lt; (q + 1) × b</code>. Subtracting <code>q × b</code> then leaves less than <code>b</code>, a
+     genuine remainder small enough for the division to continue. Anything smaller would leave a remainder of
+     <code>b</code> or more, which still has the divisor in it.</p>
+  <p>Once every digit has been brought down, the quotient written across the top and the remainder left in your hand
+     satisfy the one equation that <em>defines</em> integer division:</p>
+  <p style="text-align:center;color:var(--yellow)">dividend = quotient × divisor + remainder,&nbsp;&nbsp;with&nbsp; 0 ≤ remainder &lt; divisor.</p>
+  <p>Take <code>158 ÷ 4</code>, set out the long-division way. The <span style="color:var(--green)">quotient</span>
+     grows across the top; each step subtracts <code>q × 4</code> and carries down the
+     <span style="color:var(--cyan)">remainder</span>.</p>
+  <div class="worked" role="img" aria-label="158 divided by 4 is 39 remainder 2, set out as a long division">
+    <span></span><span></span><span class="q">3</span><span class="q">9</span>
+    <span>4</span><span class="brtop brleft">1</span><span class="brtop">5</span><span class="brtop">8</span>
+    <span class="minus">−</span><span class="brleft prod uline">1</span><span class="prod uline">2</span><span class="bring">↓</span>
+    <span></span><span class="brleft"></span><span>3</span><span>8</span>
+    <span></span><span class="brleft minus">−</span><span class="prod uline">3</span><span class="prod uline">6</span>
+    <span></span><span class="brleft"></span><span></span><span class="rem">2</span>
+  </div>
+  <ul class="steps">
+    <li>15 ÷ 4 = 3 &nbsp;→&nbsp; write <span style="color:var(--green)">3</span>; &nbsp; 4 × 3 = 12; &nbsp; 15 − 12 = 3, bring down 8 → 38.</li>
+    <li>38 ÷ 4 = 9 &nbsp;→&nbsp; write <span style="color:var(--green)">9</span>; &nbsp; 4 × 9 = 36; &nbsp; 38 − 36 = <span style="color:var(--cyan)">2</span>.</li>
+    <li>Quotient <span style="color:var(--green)">39</span>, remainder <span style="color:var(--cyan)">2</span> — and indeed 39 × 4 + 2 = 158, the equation above.</li>
+    <li>(The Lean version writes a quotient digit for <em>every</em> column — here 0, 3, 9 — and a final trim removes the leading zero; see §2.)</li>
+  </ul>
+  <p>Division comes with a precondition, just as subtraction did: the divisor must not be zero. Dividing by zero has no
+     answer at all. So, like subtraction's "top must be at least the bottom", that restriction is written into the
+     theorem as a hypothesis, and the proof gets to assume it throughout.</p>
+  <div class="note"><b>Why it's built this way.</b> Long division is the one operation you work <em>left to right</em>,
+     so the digit list — stored units-first everywhere else in the book — is reversed to run from the most significant
+     end, then reversed back at the finish. And each quotient digit is found exactly as you find it on paper: search for
+     the largest digit whose product still fits, rather than calling a built-in division. That trial-and-fit search
+     <em>is</em> the algorithm, and it is what the proof certifies (see <a href="prologue.html#repr">the prologue</a>).</div>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>The build has three layers. This chapter formalises division by a <em>single-digit</em> divisor, which is enough
+     to meet every new idea; a multi-digit version is sketched at the end of the source for the curious.</p>
+  <div id="divImpl"></div>
+  <div class="note">Numbers are stored least-significant-digit first, but division must process them
+     most-significant first. That is why <code>longDiv</code> <em>reverses</em> the list, runs the helper, then
+     reverses the quotient back — the same double-reverse you would use to read a stack from the bottom. The final
+     <code>trimTrailingZeros</code> drops any high-place zeros the digit-by-digit process produced — whenever a
+     leading chunk is smaller than the divisor (as in 158 ÷ 4: the first column asks how many 4s fit in 1, writes 0,
+     and the trim removes it), the helper writes a 0 the written method never shows — without changing the value.</div>
+
+  <!-- 3. VISUALIZATION -->
+  <h2>3 · See it run — the running remainder</h2>
+  <p>Step through one dividend digit at a time. The quotient builds up across the top; the box beneath shows the
+     search and subtraction for the current digit; the panel tracks the invariant. Try a divisor of 0 — the
+     visualiser refuses it, for the same reason the theorem carries <code>b ≠ 0</code> (the question below shows
+     what the raw code would do).</p>
+  <div class="stage">
+    <div class="controls">
+      <input class="num" id="opA" value="1234"/><span class="opSym">÷</span><input class="num dv" id="opB" value="5"/>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="stepdetail" id="detail"></div>
+    <div class="srow" style="margin-top:12px"><div class="ipanel" id="ipanel"></div></div>
+  </div>
+  <p>Watch the panel's second line. After each digit, the part of the dividend read so far equals the quotient so far
+     times the divisor, plus the current remainder, and that remainder is always below the divisor. That is the
+     invariant, and at the last digit it becomes exactly <code>dividend = quotient × divisor + remainder</code>. The
+     whole proof is the claim that this relationship survives every "bring down".</p>
+
+  <!-- 4. THINK LIKE A VERIFIER -->
+  <h2>4 · Before the proof — think like a verifier</h2>
+  <p>You have four proofs behind you now. Before reading this one, predict its shape. What must the statement assume?
+     What does "correct" even mean for division? And why can the trial-digit search be trusted? These are the
+     questions a verifier asks first.</p>
+
+  <h3>What must the statement assume?</h3>
+  <p>Addition assumed nothing; subtraction assumed the top was at least the bottom. What must division's theorem
+     assume about the divisor <code>b</code>?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="preMCQ"></div></div>
+
+  <h3>What would the code do without it?</h3>
+  <p>Forget the hypothesis for a moment: what does the <em>code</em> actually do when <code>b = 0</code>?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="zeroDivMCQ"></div></div>
+
+  <h3>Is this the right specification?</h3>
+  <p>The theorem will say <code>value = quotient × b + remainder</code> <em>and</em> <code>remainder &lt; b</code>. Why
+     both halves? Keep only the first, and an "algorithm" that always answers quotient <code>0</code>, remainder
+     <code>value</code> would pass it — <code>value = 0 × b + value</code> is perfectly true — while having divided
+     nothing at all. The second clause, <code>remainder &lt; b</code>, is what forces the quotient to be as large as it
+     should be. A specification that a broken program can satisfy is no specification; both clauses have to be there.</p>
+
+  <h3>What does "correct" mean here?</h3>
+  <p>For addition it was <code>toNat</code> of the result equals the sum. What equation should the division theorem
+     end up proving?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="meanMCQ"></div></div>
+
+  <h3>Why the <em>largest</em> digit that fits?</h3>
+  <p>The search returns the largest <code>q</code> with <code>q × b ≤</code> current value. Why must it be the
+     largest, rather than just any digit that fits?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="trialMCQ"></div></div>
+
+  <!-- 5. PROOF -->
+  <h2>5 · The proof</h2>
+  <p>The same three layers as the code — but here each module comes in two parts. First <strong>the argument</strong>
+     in plain words: read just these and you'll understand why the algorithm is correct. Then, folded underneath,
+     <strong>the full Lean proof</strong>, for anyone who wants the machine-checked details. You can follow the whole
+     chapter without opening a single dropdown.</p>
+  <p>The heart is a single induction that says the invariant from §3 survives each step. Two facts feed it: the trial
+     digit is correctly bracketed, and the running remainder stays below the divisor. The theorem states the invariant
+     about the digits <em>remaining</em>: whatever remainder <code>acc</code> you walk in with, processing the rest
+     gives back the value <code>acc</code> heads. Instantiated at the start — all digits remaining, <code>acc = 0</code>
+     — that is the whole dividend, and the §3 panel reappears.</p>
+  <div id="proofDiv"></div>
+  <p>The chain finishes at <code>longDiv_correct</code>: reversing to process from the top, running the helper from an
+     initial remainder of 0, and trimming the quotient all preserve the value, so the invariant at the end reads
+     <code>toNat a = toNat quotient × b + remainder</code> with <code>remainder &lt; b</code>. That is integer
+     division, proved for every dividend and every non-zero single digit.</p>
+
+  <!-- 6. TEST THE IDEAS -->
+  <h2>6 · Test the ideas</h2>
+
+  <h3>What the trial-digit bracket buys the proof</h3>
+  <p><code>findQuotientDigit_correct</code> proves <code>q × b ≤ value &lt; (q + 1) × b</code>. What does the main
+     induction actually need from it?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="roleMCQ"></div></div>
+
+  <h3>Why reverse the list twice?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="revMCQ"></div></div>
+
+  <h3>Why does trimming need its own lemma?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="trimMCQ"></div></div>
+
+  <h3>What it stands on</h3>
+  <p>Which earlier chapter's work does single-digit division reuse?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="reuseMCQ"></div></div>
+
+  <h3>Why the <code>n &lt; 10 × b</code> bound?</h3>
+  <p>The trial-digit lemma assumes <code>n &lt; 10 × b</code>. Why is that always true of one column, and why does it
+     matter?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="boundMCQ"></div></div>
+
+  <h3>Predict a trial digit</h3>
+  <p>What is <code>findQuotientDigit 45 ⟨5,_⟩</code> — the largest digit <code>q</code> with <code>q × 5 ≤ 45</code>?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="predTrialMCQ"></div></div>
+
+  <!-- 7. EXERCISES -->
+  <h2>7 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill; press <b>Run</b> and Lean compiles your
+     code on the server. <b>Run all</b> checks every cell in turn, <b>Reset all</b> restores the blank cells, and
+     every cell hides a <em>reference solution</em> you can reveal once you've tried.
+     <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>. The first run
+     cold-loads Mathlib, so it is slow.)</span></p>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proof is exactly the one in §5 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run it in VS Code.</p>
+
+  <div class="pager">
+    <a href="multiplication.html">← Long Multiplication</a>
+    <a href="cover.html">Contents</a>
+    <a href="divisibility.html">Divisibility Tests →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+
+const S={a:"1234",b:5,d:null,step:0,ok:true,msg:""};
+function computeDiv(aStr,b){
+  const digits=aStr.split("").map(Number),B=BigInt(b);
+  let rem=0n;const quot=[],steps=[];
+  for(let i=0;i<digits.length;i++){
+    const chunk=rem*10n+BigInt(digits[i]),q=chunk/B,prod=q*B,newRem=chunk-prod;
+    quot.push(Number(q));steps.push({d:digits[i],chunk,q:Number(q),prod,newRem,upper:(q+1n)*B});rem=newRem;
+  }
+  return {digits,quot,steps,finalRem:rem,B};
+}
+function divRender(){
+  if(!S.ok){$("board").innerHTML=`<div style="color:var(--red);max-width:360px;padding:8px">${S.msg}</div>`;
+    $("detail").innerHTML="";$("ipanel").innerHTML=`<div class="ino">precondition unmet</div>`;
+    $("lbl").textContent="—";$("prev").disabled=true;$("next").disabled=true;return;}
+  const d=S.d,n=d.digits.length;let h="";
+  h+='<div class="row"><div class="gut"></div>';
+  for(let i=0;i<n;i++){const show=i<=S.step;h+=`<div class="cell ${show?(i===S.step?'act':'q'):'future'}">${show?d.quot[i]:''}</div>`;}
+  h+='</div>';
+  h+=`<div class="row"><div class="gut">${S.b} )</div>`;
+  for(let i=0;i<n;i++){h+=`<div class="cell ${i===S.step?'act':''}">${d.digits[i]}</div>`;}
+  h+='</div>';
+  $("board").innerHTML=h;
+  let log="";
+  for(let i=0;i<=S.step;i++){const t=d.steps[i],act=i===S.step;
+    log+=`<div style="padding:3px 7px;margin:2px 0;border-radius:5px;${act?"background:#2a2a00;color:var(--yellow)":"color:#00aaff"}">`+
+      `↓ ${t.chunk} ÷ ${S.b} = <b>${t.q}</b> &nbsp;(${S.b}×${t.q} = ${t.prod}) &nbsp;rem <span style="color:var(--cyan)">${t.newRem}</span></div>`;}
+  $("detail").innerHTML=log;
+  const k=S.step,s=d.steps[k],readSoFar=BigInt(S.a.slice(0,k+1)),quotSoFar=BigInt(d.quot.slice(0,k+1).join("")),R=quotSoFar*d.B+s.newRem;
+  $("ipanel").innerHTML=
+    `<div class="ititle">After digit ${k+1} of ${n}</div>`+
+    `<div class="igen">read so far = quotient so far × b + remainder</div>`+
+    `<div class="ieq">${readSoFar} = ${quotSoFar} × ${S.b} + ${s.newRem}</div>`+
+    `<div class="ieq">${readSoFar} = ${R}</div>`+
+    (readSoFar===R?`<div class="iok">✓ holds · remainder ${s.newRem} &lt; ${S.b} ${s.newRem<d.B?"✓":"✗"}</div>`:`<div class="ino">✗</div>`)+
+    (k===n-1?`<div class="igen" style="margin-top:8px">quotient = ${BigInt(d.quot.join(""))}, remainder = ${d.finalRem}</div>`:``);
+  $("lbl").textContent=`digit ${k+1} of ${n}`;$("prev").disabled=S.step<=0;$("next").disabled=S.step>=n-1;
+}
+function start(){
+  S.a=clean($("opA").value);const bv=+clean($("opB").value);
+  if(bv<1||bv>9){S.ok=false;S.msg="Divide by a single non-zero digit (1–9) here. A divisor of 0 is undefined — that is the b ≠ 0 precondition — and multi-digit divisors are the unproved extension.";divRender();return;}
+  S.ok=true;S.b=bv;S.d=computeDiv(S.a,bv);S.step=0;divRender();
+}
+$("go").onclick=start;$("prev").onclick=()=>{if(S.ok&&S.step>0){S.step--;divRender();}};$("next").onclick=()=>{if(S.ok&&S.step<S.d.digits.length-1){S.step++;divRender();}};
+[$("opA"),$("opB")].forEach(e=>e.addEventListener("keydown",ev=>{if(ev.key==="Enter")start();}));
+
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+function divImpl(){ return `<p class="pstep">Layer 1 · The trial digit <span class="n">— the "how many times does it go in?" search</span></p>
+<p><code>findQuotientDigit</code> returns the largest digit <code>q</code> with <code>q × b ≤ n</code>. It simply counts down from 9 and takes the first digit that fits, using <code>mulTable</code> to compute each product. The extra <code>Nat</code> argument is the countdown itself — each call strips one off, so Lean sees termination by construction; and the <code>if h :</code> names the proof that the candidate is still below ten, which is exactly what lets the code build the digit <code>⟨q+1, h⟩</code>.</p>
+<pre class="lean">${C("-- Largest q in 0–9 with q × b ≤ n, found by counting down from a fuel value.")}
+${K("def")} ${T("findQuotientDigitHelper","lem","findQuotientDigitHelper (n : Nat) (b : Digit) : Nat → Digit","","Tries q, q−1, …, 1; returns the first whose product with b fits in n, else 0.")} (n : Nat) (b : Digit) : Nat → Digit
+  | 0 => 0
+  | q + 1 =>
+      ${K("if")} h : q + 1 < 10 ${K("then")}
+        ${K("let")} (units, tens) := ${T("mulTable","lem","mulTable : Digit → Digit → Digit × Digit","","The times table from Chapter 3, used to compute q × b as (units, tens).")} ⟨q+1, h⟩ b
+        ${K("if")} units.val + 10 * tens.val ≤ n ${K("then")} ⟨q+1, h⟩       ${C("-- q+1 fits: take it")}
+        ${K("else")} findQuotientDigitHelper n b q                          ${C("-- too big: try q")}
+      ${K("else")} 0
+
+${K("def")} ${T("findQuotientDigit","lem","findQuotientDigit (n : Nat) (b : Digit) : Digit","","Starts the search at 9 — so it returns the largest fitting digit.")} (n : Nat) (b : Digit) : Digit :=
+  findQuotientDigitHelper n b 9</pre>
+<p class="pstep">Layer 2 · One pass over the digits <span class="n">— bring down, divide, subtract</span></p>
+<p><code>longDivHelper</code> is the core loop, run over the digits from the top down. It keeps the running remainder in <code>acc</code>: bring the next digit down to form <code>currentRem</code>, pick the trial digit <code>q</code>, subtract <code>q × b</code>, and recurse with the new remainder.</p>
+<pre class="lean">${K("def")} ${T("longDivHelper","lem","longDivHelper : List Digit → Digit → Nat → MultiDigit × Nat","","Processes digits most-significant first, threading the running remainder acc; returns the quotient digits and the final remainder.")} : List Digit → Digit → Nat → MultiDigit × Nat
+  | [], _, acc => ([], acc)                    ${C("-- no digits left: acc is the remainder")}
+  | d :: ds, b, acc =>
+      ${K("let")} currentRem := acc * 10 + d.val         ${C("-- bring down the next digit")}
+      ${K("let")} q := ${T("findQuotientDigit","lem","findQuotientDigit currentRem b","","The trial digit for this column.")} currentRem b
+      ${K("let")} (units, tens) := mulTable q b
+      ${K("let")} newRem := currentRem - (units.val + 10 * tens.val)  ${C("-- subtract q × b")}
+      ${K("let")} (quotTail, finalRem) := longDivHelper ds b newRem
+      (q :: quotTail, finalRem)</pre>
+<p class="pstep">Layer 3 · Reverse, run, trim <span class="n">— reach the top digit first, tidy the answer</span></p>
+<p>Numbers are stored units-first, so <code>longDiv</code> reverses the list to reach the top digit first, runs the helper from remainder 0, reverses the quotient back, and trims any high-place zeros. <code>trimTrailingZeros</code> drops zeros from the high end of a units-first list without changing its value.</p>
+<pre class="lean">${K("def")} ${T("trimTrailingZeros","lem","trimTrailingZeros : MultiDigit → MultiDigit","","Removes high-place zeros (trailing in units-first list order, leading as written): [3,3,0] ↦ [3,3], [0,0,0] ↦ [].")} : MultiDigit → MultiDigit
+  | [] => []
+  | d :: ds =>
+      ${K("match")} trimTrailingZeros ds ${K("with")}
+      | [] => ${K("if")} d.val == 0 ${K("then")} [] ${K("else")} [d]
+      | ts => d :: ts
+
+${K("def")} ${T("longDiv","lem","longDiv (a : MultiDigit) (b : Digit) : MultiDigit × Nat","","Long division of a number by a single digit, returning the quotient (units-first) and the remainder.")} (a : MultiDigit) (b : Digit) : MultiDigit × Nat :=
+  ${K("let")} (quot, rem) := longDivHelper a.reverse b 0
+  (trimTrailingZeros quot.reverse, rem)</pre>`; }
+
+function buildDivProof(){ return `<p class="pstep">Layer 1 · The trial digit is correctly bracketed <span class="n">— the search returns the right digit</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The whole algorithm rests on one claim about the search: the digit it returns is the <em>largest</em> one that fits. Written out, that is a two-sided bracket — <code>q·b ≤ n</code> (it fits) and <code>n &lt; (q+1)·b</code> (one more would not). Both halves matter later: the lower bound makes the subtraction safe, the upper bound is what forces the leftover below the divisor. Since a divisor is one of ten digits and the search is a bounded count-down, there are no variables to reason about — Lean splits into the ten divisors and decides every case by arithmetic.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- The chosen digit q satisfies  q·b ≤ n < (q+1)·b  — it fits, and one more would not.")}
+${T("set_option maxHeartbeats 0","tac","set_option maxHeartbeats 0 in","","Lifts the work limit: fin_cases (10 divisors) combined with split_ifs (the nested trial-digit conditions) is a large but purely computational case explosion.")} in
+${K("theorem")} ${T("findQuotientDigit_correct","lem","findQuotientDigit_correct","(findQuotientDigit n b).val · b.val ≤ n  ∧  n < ((findQuotientDigit n b).val + 1) · b.val","The trial digit fits (q·b ≤ n) and is maximal (n < (q+1)·b). This bracket is what pins the remainder below b.")} (n : Nat) (b : Digit) (${T("hb","lem","hb : b.val ≠ 0","","The divisor is nonzero — the division precondition.")} : b.val ≠ 0) (${T("hn","lem","hn : n < 10 * b.val","","One column's value is always below 10·b, which is why a single digit q suffices.")} : n < 10 * b.val) :
+    (findQuotientDigit n b).val * b.val ≤ n ∧
+    n < ((findQuotientDigit n b).val + 1) * b.val := ${K("by")}
+  ${T("simp","tac","simp [findQuotientDigit, findQuotientDigitHelper, mulTable_correct]","unfolds the search and turns each mulTable lookup into a raw product","mulTable_correct (Chapter 3) replaces the (units, tens) lookup by q · b, so only arithmetic is left.")} [findQuotientDigit, findQuotientDigitHelper, mulTable_correct]
+  ${T("fin_cases","tac","fin_cases b <;> try simp_all <;> try split_ifs <;> omega","one branch per divisor, each condition opened, each boundary decided","With b concrete, split_ifs opens the count-down's if-conditions and omega decides every ≤ / <.")} b &lt;;&gt; try simp_all &lt;;&gt; try ${T("split_ifs","tac","split_ifs","opens every nested if in the search","Each 'does q fit?' test becomes its own case.")} &lt;;&gt; omega</pre></details>
+
+<p class="pstep">Layer 2a · Reversal moves a digit to the top place <span class="n">— a place-value bookkeeping lemma</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Division reverses its lists, so we need to know exactly what reversal does to the number a list denotes. Putting a digit at the <em>front</em> of the reversed list lands it in the highest place, worth <code>10^length</code>. This little lemma records that fact so the main proof can move brought-down digits and new quotient digits into their columns without re-deriving the algebra. It reuses <code>toNat_append</code> from Chapter 3.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Reversing a cons puts the head at the top place; toNat_append (Chapter 3) does the algebra.")}
+${K("theorem")} ${T("toNat_reverse_cons","lem","toNat_reverse_cons","toNat (d :: ds).reverse = toNat ds.reverse + d.val · 10^(ds.length)","Moving a digit to the front of the number (the reversal) adds it at place 10^length.")} (d : Digit) (ds : List Digit) :
+    toNat (d :: ds).reverse = toNat ds.reverse + d.val * 10^(ds.length) := ${K("by")}
+  rw [List.reverse_cons, ${T("toNat_append","lem","toNat_append","toNat (a ++ b) = toNat a + 10^(a.length) · toNat b","The append lemma from Chapter 3, reused here.")}, List.length_reverse] ; simp [toNat] ; ${T("ring","tac","ring","closes the place-value algebra","")}</pre></details>
+
+<p class="pstep">Layer 2b · Trimming high-place zeros keeps the value <span class="n">— justifying the final cleanup</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The digit-by-digit process writes a quotient digit for every column, so it can leave zeros in the high places the written method never shows. The final step drops them, and we have to prove that dropping them changes nothing. The argument is a short induction: if the trimmed tail vanishes the whole thing denoted zero anyway, and otherwise the leading digit simply rides along in front — either way <code>toNat</code> is unchanged.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Trimming high-place zeros never changes the value the list denotes.")}
+${K("theorem")} ${T("trimTrailingZeros_correct","lem","trimTrailingZeros_correct","toNat (trimTrailingZeros a) = toNat a","Removing high-place zeros is value-preserving — needed to justify the final cleanup.")} (a : MultiDigit) :
+    toNat (trimTrailingZeros a) = toNat a := ${K("by")}
+  induction a ${K("with")}
+  | nil => simp [trimTrailingZeros]
+  | cons d ds ih =>
+      unfold trimTrailingZeros
+      ${T("cases","tac","cases h : trimTrailingZeros ds","split on whether the trimmed tail is empty","If the tail trims to [], the value came only from d; otherwise d is kept in front.")} h : trimTrailingZeros ds ${K("with")}
+      | nil =>
+          ${C("-- The tail trims completely to []. By ih, the original tail also denotes 0.")}
+          have hds : toNat ds = 0 := ${K("by")}
+            have := ih
+            rw [h] at this
+            simp [toNat] at this
+            exact this.symm
+          ${K("by_cases")} hd : d.val = 0
+          · ${C("-- current digit is also 0: the whole thing is 0, trimming returns [].")}
+            have hd' : d = ⟨0, ${K("by")} omega⟩ := ${K("by")}
+              ext
+              exact hd
+            simp [hd', toNat, hds]
+          · ${C("-- current digit nonzero: it becomes the sole digit; tail adds 0, value unchanged.")}
+            simp [hd, toNat, hds]
+      | cons t ts => simp [toNat, ← ih, h]</pre></details>
+
+<p class="pstep">Layer 2c · One quotient digit per dividend digit <span class="n">— a length lemma</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Because the loop emits exactly one quotient digit for each digit it consumes, the quotient is as long as the dividend. That is obvious from the code, but the main proof needs it as a fact: it is what lines up the two lists' place values — the power of ten on the quotient side has to match the one on the dividend side. A one-line induction records it.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- The quotient has exactly one digit per dividend digit.")}
+${K("theorem")} ${T("longDivHelper_length","lem","longDivHelper_length","(longDivHelper ds b acc).1.length = ds.length","One quotient digit is produced per input digit — needed to line up the place values in the main proof.")} (ds : List Digit) (b : Digit) (acc : Nat) :
+    (longDivHelper ds b acc).1.length = ds.length := ${K("by")}
+  induction ds generalizing acc ${K("with")}
+  | nil => rfl
+  | cons d ds ih => unfold longDivHelper ; dsimp only ; simp [ih]</pre></details>
+
+<p class="pstep">Layer 3a · The induction and this column's trial-digit bracket <span class="n">— setting up one step</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Here is the heart: an induction on the remaining digits, generalising the accumulator <code>acc</code> so the hypothesis holds for the <em>new</em> remainder each column produces, not the one it came in with. The empty case is immediate — no digits left, so <code>acc</code> is the answer. For a step we bring the next digit down to form the current value, note it stays below <code>10·b</code>, and hand it to Layer 1. That gives this column's bracket: <code>q·b ≤ currentRem &lt; (q+1)·b</code>, the two facts the rest of the step will spend.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- THE HEART: dividend-so-far = quotient·b + remainder, and remainder < b — maintained per digit.")}
+${K("theorem")} ${T("longDivHelper_correct","lem","longDivHelper_correct","acc·10^(ds.length) + toNat ds.reverse = toNat quot.reverse · b + rem   ∧   rem < b","The invariant: the value seen so far equals quotient·b + remainder, and the remainder stays below the divisor. It is the §3 panel, stated from the other end: acc is the remainder produced by the digits already read, ds are the digits still to come, and 'acc followed by ds' must equal quotient × b + remainder. ds here is already reversed (top digit first), so ds.reverse restores the units-first order toNat reads; acc·10^(ds.length) places the carried remainder above the digits not yet read.")} (ds : List Digit) (b : Digit) (hb : b.val ≠ 0)
+    (acc : Nat) (${T("hacc","lem","hacc : acc < b.val","","The running remainder entering a column is already below the divisor — the invariant carried in.")} : acc < b.val) :
+    ${K("let")} (quot, rem) := longDivHelper ds b acc
+    acc * 10^(ds.length) + toNat ds.reverse = toNat quot.reverse * b.val + rem ∧ rem < b.val := ${K("by")}
+  ${T("induction","tac","induction ds generalizing acc","cases ds = []  and  ds = d :: ds","Induction on the digits, generalising acc because each step recurses with a NEW remainder, not the one it came in with.")} ds generalizing acc ${K("with")}
+  | nil => simp [longDivHelper, hacc]              ${C("-- no digits: acc is the remainder, and acc < b")}
+  | cons d ds ih =>
+      unfold longDivHelper
+      ${K("set")} currentRem := acc * 10 + d.val         ${C("-- bring down the digit")}
+      ${K("set")} q := findQuotientDigit currentRem b
+      ${K("set")} units := (mulTable q b).1 ; ${K("set")} tens := (mulTable q b).2
+      ${K("set")} ${T("newRem","lem","set newRem := currentRem - (units.val + 10 * tens.val)","","The subtraction step from §1: take q × b (computed by mulTable as units + 10·tens) away from the current value. This is where the running remainder is born.")} := currentRem - (units.val + 10 * tens.val)
+      have hd : d.val &lt; 10 := d.isLt
+      ${C("-- Since acc < b and d < 10, the current dividend is < 10·b.")}
+      have h_bound : currentRem &lt; 10 * b.val := ${K("by")}
+        dsimp [currentRem]
+        omega
+      ${C("-- the trial-digit bracket, from Layer 1:  q·b ≤ currentRem < (q+1)·b.")}
+      have ⟨hq_lower, hq_upper⟩ :=
+        ${T("findQuotientDigit_correct","lem","findQuotientDigit_correct currentRem b hb h_bound","q·b ≤ currentRem < (q+1)·b","Applied to this column. hq_lower makes the subtraction safe; hq_upper forces the new remainder below b.")} currentRem b hb h_bound
+      have h_dist :
+          (q.val + 1) * b.val =
+          q.val * b.val + b.val := ${K("by")}
+        rw [Nat.add_mul, Nat.one_mul]
+      rw [h_dist] at hq_upper</pre></details>
+
+<p class="pstep">Layer 3b · The new remainder stays below the divisor <span class="n">— the invariant survives the step</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>This is the step that keeps the whole thing honest. Subtracting <code>q·b</code> from the current value leaves the new remainder, and we must show it is still below <code>b</code> so the next column may assume the same thing we did. It follows straight from the upper half of the bracket: since the value is below <code>(q+1)·b = q·b + b</code>, taking away <code>q·b</code> leaves less than <code>b</code>. With that in hand we peel off the recursive call and apply the induction hypothesis at the new remainder.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">      ${C("-- Multiplication table correctness (Chapter 3):  units + 10·tens = q·b.")}
+      have h_mul_eq :
+          units.val + 10 * tens.val =
+          q.val * b.val :=
+        ${T("mulTable_correct","lem","mulTable_correct q b","units.val + 10 * tens.val = q.val · b.val","The single-digit product lemma reused here to turn the (units, tens) lookup into q·b.")} q b
+      ${C("-- The new remainder remains strictly smaller than the divisor.")}
+      have h_newRem_bound : ${T("newRem","lem","newRem < b.val","","currentRem − q·b < b, because currentRem < (q+1)·b. The invariant survives.")} &lt; b.val := ${K("by")}
+        dsimp [newRem, currentRem]
+        rw [h_mul_eq]
+        omega
+      cases h_rec : longDivHelper ds b newRem ${K("with")}
+      | mk quotTail finalRem =>
+      ${C("-- Apply the induction hypothesis to the recursive call.")}
+      have h_ih := ${T("ih","tac","ih newRem h_newRem_bound","the tail is already correct, given the new remainder is < b","The inductive hypothesis — usable precisely because we re-proved newRem < b.")} newRem h_newRem_bound
+      rw [h_rec] at h_ih
+      dsimp only at h_ih
+      dsimp only
+      try rw [h_rec]
+      dsimp only
+      ${K("constructor")}</pre></details>
+
+<p class="pstep">Layer 3c · Assembling the place-value equation <span class="n">— the calc that glues column to tail</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Two facts are now on the table: the induction hypothesis says the tail already reads as <code>quotient·b + remainder</code>, and the lower bound lets us rewrite the current value as <code>newRem + q·b</code> exactly (the truncating subtraction lost nothing). What remains is bookkeeping: place the brought-down digit and the new quotient digit at their columns, match the powers of ten using the length lemma, and let a <code>calc</code> chain of <code>ring</code> rearrangements land on <code>dividend = quotient·b + remainder</code>. The remainder bound is already carried by the hypothesis, so the second half of the goal closes at once.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">      · ${C("-- Combine recursive correctness with the current step: dividend = divisor·quotient + remainder.")}
+        rw [List.length_cons]
+        rw [${T("toNat_reverse_cons","lem","toNat_reverse_cons d ds","toNat (d :: ds).reverse = toNat ds.reverse + d.val · 10^(ds.length)","Places the brought-down digit at its column, and the same lemma places the new quotient digit q.")} d ds]
+        rw [toNat_reverse_cons q quotTail]
+        have h_len := ${T("longDivHelper_length","lem","longDivHelper_length ds b newRem","(longDivHelper ds b newRem).1.length = ds.length","Lines up the quotient's length with the dividend's so the powers of ten match.")} ds b newRem
+        rw [h_rec] at h_len
+        dsimp only at h_len
+        rw [h_len]
+        rw [Nat.pow_add, Nat.pow_one]
+        have h_eq := h_ih.1
+        generalize 10^(ds.length) = E at *
+        ${C("-- replace the concrete power with E so ring can handle it symbolically")}
+        ${C("-- Rewrite the current dividend as newRem + q·b.")}
+        have h_sub :
+            newRem =
+            (acc * 10 + d.val) - q.val * b.val := ${K("by")}
+          dsimp [newRem, currentRem]
+          rw [h_mul_eq]
+        have h_rem_add :
+            acc * 10 + d.val =
+            newRem + q.val * b.val := ${K("by")}
+          rw [h_sub]
+          exact (Nat.sub_add_cancel hq_lower).symm
+        ${C("-- show: current dividend = (tail quotient + current digit contribution) × b + finalRem")}
+        ${T("calc","tac","calc … = … := by ring / rw","chains place-value equalities into  dividend = quotient·b + remainder","Rewrites currentRem = newRem + q·b (via Nat.sub_add_cancel and hq_lower), then ring rearranges the powers of ten to match the recursive result.")}
+          acc * (E * 10) + (toNat ds.reverse + d.val * E)
+              = (acc * 10 + d.val) * E + toNat ds.reverse := ${K("by")} ring
+          _ = (newRem + q.val * b.val) * E + toNat ds.reverse := ${K("by")}
+                rw [h_rem_add]
+          _ = (newRem * E + toNat ds.reverse) + q.val * E * b.val := ${K("by")} ring
+          _ = (toNat quotTail.reverse * b.val + finalRem)
+                + q.val * E * b.val := ${K("by")}
+                rw [h_eq]
+          _ = (toNat quotTail.reverse + q.val * E)
+                * b.val + finalRem := ${K("by")} ring
+      · ${C("-- The recursive call already guarantees the remainder bound.")}
+        exact h_ih.2</pre></details>
+
+<p class="pstep">Layer 3d · The main theorem <span class="n">— from the invariant to integer division</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Everything now assembles. <code>longDiv</code> reverses the dividend, runs the helper from remainder 0, reverses the quotient back and trims it. Starting the invariant at <code>acc = 0</code> (valid because <code>b ≠ 0</code>) gives it for the whole number; trimming preserves the value by Layer 2b; and undoing the double reversal recovers the original dividend. What is left reads <code>toNat a = toNat q · b + r</code> with <code>r &lt; b</code> — integer division, proved for every dividend and every non-zero single digit.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- MAIN THEOREM: for any dividend and any nonzero single-digit divisor.")}
+${K("theorem")} ${T("longDiv_correct","lem","longDiv_correct","toNat a = toNat q · b.val + r   ∧   r < b.val","Integer division: the quotient q and remainder r returned by longDiv satisfy a = q·b + r with r < b.")} (a : MultiDigit) (b : Digit) (hb : b.val ≠ 0) :
+    ${K("let")} (q, r) := longDiv a b
+    toNat a = toNat q * b.val + r ∧ r < b.val := ${K("by")}
+  unfold longDiv
+  cases h : longDivHelper a.reverse b 0 ${K("with")}
+  | mk quotTail finalRem =>
+    have h_helper := ${T("longDivHelper_correct","lem","longDivHelper_correct a.reverse b hb 0 (by omega)","the invariant at the top level, started from remainder 0","0 < b since b ≠ 0, so the initial remainder is valid.")} a.reverse b hb 0 (by omega)
+    rw [h] at h_helper
+    rw [${T("trimTrailingZeros_correct","lem","trimTrailingZeros_correct quotTail.reverse","trimming the quotient keeps its value","So the trimmed answer denotes the same number.")} quotTail.reverse]
+    ${C("-- a.reverse.reverse = a, then omega finishes from the helper's equation.")}
+    have h_rev_rev := List.reverse_reverse a
+    exact ⟨${K("by")} rw [← h_rev_rev]; omega, h_helper.2⟩</pre></details>`; }
+
+function mcq(elId,options,correct){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+$("divImpl").innerHTML=divImpl();
+$("proofDiv").innerHTML=buildDivProof();
+bindTips();
+start();
+
+mcq("preMCQ",[
+  {text:"That the dividend is larger than the divisor.",why:"Not needed — 7 ÷ 9 is perfectly well defined (quotient 0, remainder 7). Small dividends are fine."},
+  {text:"That the dividend has more digits than the divisor.",why:"Digit counts are irrelevant; the only genuine obstacle is a zero divisor."},
+  {text:"That the divisor is not zero, <code>b.val ≠ 0</code>.",why:"Right. Division by zero has no answer, so the theorem carries <code>b.val ≠ 0</code> as a hypothesis — division's version of subtraction's precondition."},
+  {text:"Nothing — division is defined for all inputs, like addition.",why:"Unlike addition, division by zero is undefined, so a hypothesis is unavoidable."},
+],2);
+mcq("zeroDivMCQ",[
+  {text:"It crashes with a division-by-zero error.",why:"Nothing divides here — the code only multiplies and compares; it returns garbage, not an error. That is exactly why the theorem needs the hypothesis."},
+  {text:"Every trial digit fits (q × 0 = 0 ≤ n), so the search returns 9 at every column.",why:"Right — an all-nines 'quotient', and no remainder can ever be &lt; 0; the hypothesis b ≠ 0 rules the scenario out of the theorem rather than out of the code."},
+  {text:"It loops forever.",why:"The fuel still counts down from 9 regardless; termination is structural."},
+  {text:"It returns quotient 0, remainder n.",why:"The search picks the <em>largest</em> fitting digit — with b = 0 everything fits, so it picks 9, not 0."},
+],1);
+mcq("meanMCQ",[
+  {text:"toNat a = toNat q × b + r, with r &lt; b.",why:"Yes — the defining equation of integer division: dividend = quotient × divisor + remainder, and the remainder is strictly below the divisor."},
+  {text:"toNat a = toNat q × b, exactly.",why:"That only holds when the division is exact. In general there is a remainder to account for."},
+  {text:"toNat a ÷ b = toNat q, rounding as Lean's ÷ does.",why:"The theorem is stated without Lean's ÷ at all; it pins down q and r by the multiply-and-add identity, which is stronger and self-contained."},
+  {text:"toNat q × b ≥ toNat a.",why:"An inequality alone doesn't determine the answer; correctness needs the exact identity with a bounded remainder."},
+],0);
+mcq("trialMCQ",[
+  {text:"Any digit that fits would be correct; largest is just convention.",why:"No — if q is not the largest, the leftover value is b or more, so it still contains the divisor and the 'remainder' is wrong."},
+  {text:"The smallest fitting digit is actually intended.",why:"The smallest is always 0, which fits trivially and computes nothing. The point is to take out as much as possible."},
+  {text:"It only makes the search faster, with no effect on correctness.",why:"It is essential to correctness, not just speed — a non-maximal digit breaks the remainder bound."},
+  {text:"Because only the largest fitting q leaves a leftover below b.",why:"Exactly. Maximality forces value &lt; (q+1)×b, so after subtracting q×b the leftover is less than b — a valid remainder."},
+],3);
+mcq("roleMCQ",[
+  {text:"It proves the algorithm terminates.",why:"Termination is separate (the digit list shrinks); the bracket is about correctness of each digit."},
+  {text:"It shows the quotient has the right number of digits.",why:"That's longDivHelper_length's job, not findQuotientDigit_correct's."},
+  {text:"It replaces the need for induction.",why:"The induction still does the work of chaining columns; the bracket is what each step feeds it."},
+  {text:"Both sides: one bound validates the subtraction, the other re-bounds the remainder.",why:"Right — q×b ≤ value means the truncating Nat subtraction loses nothing (currentRem − q×b + q×b = currentRem), and value &lt; (q+1)×b forces the new remainder below b — exactly what re-establishes the invariant for the recursive call."},
+],3);
+mcq("revMCQ",[
+  {text:"Because numbers are stored units-first, but division must process most-significant first — so it reverses to reach the top digit, then reverses the quotient back.",why:"Right. The storage order and the processing order are opposite for division alone, hence the double reverse."},
+  {text:"To sort the digits into ascending order first.",why:"No sorting happens; reversal just changes which end is processed first."},
+  {text:"To make the recursion terminate.",why:"Termination comes from the shrinking list, not from reversing."},
+  {text:"Because verticalSub needs reversed input.",why:"Subtraction works units-first like everything else; the reverse is about division's top-down processing."},
+],0);
+mcq("trimMCQ",[
+  {text:"Because the quotient is stored backwards and trimming re-orders it.",why:"Trimming doesn't reorder; it only removes high-place zeros."},
+  {text:"Because trimming can change the remainder.",why:"Trimming only touches the quotient's zeros; the remainder is untouched."},
+  {text:"Because the digit-by-digit process can leave high-place zeros (a leading 0 when the first chunk is too small), and the lemma shows removing them leaves toNat unchanged.",why:"Right — trimming is a real cleanup step, and its correctness (value-preserving) has to be proved so the final answer still denotes the same number."},
+  {text:"It doesn't — the lemma is unnecessary.",why:"It's needed: longDiv_correct rewrites with it to justify the final trimmed quotient."},
+],2);
+mcq("reuseMCQ",[
+  {text:"The times table from multiplication — mulTable and its correctness — to form and reason about q × b.",why:"Right. The trial digit uses mulTable to compute q × b, and findQuotientDigit_correct rewrites those lookups with mulTable_correct."},
+  {text:"Subtraction's borrow machinery.",why:"The single-digit version subtracts with ordinary Nat subtraction; the borrow-based verticalSub only appears in the multi-digit extension."},
+  {text:"Nothing — division is self-contained.",why:"It explicitly imports and uses the multiplication chapter's table and lemma."},
+  {text:"Only the Digit type.",why:"It reuses mulTable and mulTable_correct, not just a type."},
+],0);
+mcq("boundMCQ",[
+  {text:"It prevents division by zero.",why:"The b ≠ 0 hypothesis handles that separately; this bound is about the size of one column."},
+  {text:"Each column's value is (a remainder below b) × 10 + a digit, so it is always below 10 × b — and that is exactly what guarantees the quotient digit fits in one digit (0–9).",why:"Right. The bring-down keeps the value under 10 × b, so a single digit q can always take out the divisor — matching the Digit type."},
+  {text:"It only keeps omega's variables bounded.",why:"It is a real fact about the column's size, not a technicality for omega."},
+  {text:"It means the algorithm works only for one-digit dividends.",why:"It applies at every column of any dividend; the bound is on one column's value, not the whole number."},
+],1);
+mcq("predTrialMCQ",[
+  {text:"8 — leaving a remainder of 5.",why:"8 × 5 = 40 fits, but 9 × 5 = 45 also fits (exactly), and we take the largest."},
+  {text:"5",why:"5 × 5 = 25 fits but isn't the largest digit that does."},
+  {text:"4",why:"4 × 5 = 20 is far from the largest."},
+  {text:"9 — an exact fit.",why:"Right — 9 × 5 = 45 ≤ 45; the ≤ is not strict, so an exact fit counts, and 9 is the largest digit that fits."},
+],3);
+
+/* ==================== notebook worksheet (submit-and-check) ==================== */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"div_trim", n:1, kind:"code", title:"Complete trimTrailingZeros",
+   prompt:`When the trimmed tail comes back <em>non-empty</em>, the current digit is a real digit and must be kept in front of it.`,
+   ctx:`  | d :: ds =&gt;
+      <span class="kw">match</span> studentTrim ds <span class="kw">with</span>
+      | [] =&gt; <span class="c">if d.val == 0 then [] else [d]   -- tail vanished</span>
+      | ts =&gt; <span class="ph">‹ your answer ›</span>`,
+   ph:"one line…",
+   hints:[
+     `The recursive call already trimmed the rest of the number and handed back a non-empty list. Since the tail survived, this position is meaningful — so whatever you return must put the current digit ahead of that trimmed tail.`,
+     `No tactic here — this is a term-mode function body. Build a list by consing the current digit onto the pattern variable bound to the trimmed tail (the list <code>cons</code> operator, <code>::</code>).`],
+   sol:`d :: ts`},
+  {ex:"div_trial", n:2, kind:"compute", title:"Evaluate the trial digit",
+   prompt:`The largest digit <code>q</code> with <code>q × 5 ≤ 23</code> is <code>4</code> (4 × 5 = 20 ≤ 23 &lt; 25). <code>native_decide</code> compiles the statement to native code and runs it — much faster than the kernel's <code>decide</code> for real computations, at the price of trusting the compiler as well as the kernel. Here either would work; the full division in §2's tests genuinely wants the fast path.`,
+   ctx:`<span class="kw">example</span> : findQuotientDigit 23 ⟨5,_⟩ = ⟨4,_⟩ := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `Both sides are fully concrete — no variables, no hypotheses. A goal like this can simply be computed rather than reasoned about, the way earlier chapters settled concrete equalities.`,
+     `Reach for a decision procedure that evaluates the claim. Either <code>decide</code> (kernel) or <code>native_decide</code> (compiled, faster) closes it; the division tests want the fast one.`],
+   sol:`native_decide`},
+  {ex:"div_bound", n:3, kind:"proof", title:"The bound that keeps division alive",
+   prompt:`This is <code>h_newRem_bound</code> from §5, stripped to its arithmetic: the trial-digit bracket alone forces the new remainder below <code>b</code> — <code>(q+1)·b</code> is written expanded, <code>q·b + b</code>, to keep the arithmetic linear. One tactic from Chapter 0 closes it.`,
+   ctx:`<span class="kw">example</span> (v b q : Nat) (h1 : q * b ≤ v) (h2 : v &lt; q * b + b) :
+    v - q * b &lt; b := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `Everything here is plain natural-number arithmetic with subtraction and two inequalities as hypotheses. Recall the Chapter 0 workhorse for linear arithmetic goals over integers and naturals.`,
+     `A single call to <code>omega</code> combines <code>h1</code> and <code>h2</code> and discharges the goal; you do not need to touch the hypotheses by hand.`],
+   sol:`omega`},
+  {ex:"div_cite", n:4, kind:"proof", title:"Cite a proved result",
+   prompt:`You wrote the trimming function above; the book proves it never changes the value (<code>trimTrailingZeros_correct</code>). Close this goal by using that theorem directly.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) : toNat (trimTrailingZeros a) = toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"exact …",
+   hints:[
+     `The book already proved that trimming leaves the value unchanged, and that lemma&apos;s statement is exactly this goal. You do not need to prove anything new — just hand over the existing result.`,
+     `Use <code>exact</code> with the lemma <code>trimTrailingZeros_correct</code>. It takes the number as its argument, so apply it to <code>a</code>.`,
+     `One line: <code>exact</code>, then the lemma name, then the argument <code>a</code>.`],
+   sol:`exact trimTrailingZeros_correct a`},
+  {ex:"div_build", n:5, kind:"proof", title:"Build a short proof — the remainder bound",
+   prompt:`A two-liner you assemble yourself. The flagship <code>longDiv_correct a b hb</code> proves a <em>pair</em> of facts joined by ∧; you want only the second, <code>remainder &lt; b</code>. Name the theorem, then take its second half.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) (b : Digit) (hb : b.val ≠ 0) : (longDiv a b).2 &lt; b.val := <span class="kw">by</span>
+  <span class="ph">‹ your proof — two steps ›</span>`,
+   ph:"have … , then project out .2",
+   hints:[
+     `The whole fact is already proved; you just need to pull one conjunct out of it. First give the theorem a name in your context.`,
+     `Write <code>have h := longDiv_correct a b hb</code>, then close the goal with its second component, <code>exact h.2</code>.`],
+   sol:`have h := longDiv_correct a b hb
+  exact h.2`},
+  {ex:"div_whole", n:6, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`Prove the entire division specification at once: for a non-zero divisor, the value equals quotient × b + remainder, and the remainder stays below b. The chapter already proved this — your job is to invoke it.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) (b : Digit) (hb : b.val ≠ 0) :
+    toNat a = toNat (longDiv a b).1 * b.val + (longDiv a b).2 ∧ (longDiv a b).2 &lt; b.val := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"one term-mode line…",
+   hints:[
+     `You don't need to re-run the induction — the flagship theorem of the chapter is exactly this statement. Recall its name.`,
+     `Close it in term mode: <code>exact</code> the theorem <code>longDiv_correct</code> applied to the number, the divisor, and the non-zero hypothesis <code>hb</code>.`],
+   sol:`exact longDiv_correct a b hb`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script src="book.js"></script>
+</body>
+</html>

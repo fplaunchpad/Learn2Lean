@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chapter 0 — Reading Lean Code</title>
+<meta name="description" content="How to read the Lean code in this book: the notations, the core tactics with tiny examples, how a number is represented, and two first proofs."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.65}
+  .wrap{max-width:860px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:26px;margin:0 0 6px;color:#fff}
+  h2{font-size:21px;color:#fff;margin:48px 0 4px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:16px;color:var(--cyan);margin:26px 0 6px;font-weight:600}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0} .lead{font-size:15px}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  .nav{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;margin:14px 0 8px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:10px 14px;margin:14px 0;font-size:14px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:7px 0}
+  .gloss{display:grid;grid-template-columns:auto 1fr;gap:9px 18px;margin:16px 0;font-size:14px;align-items:baseline}
+  .gloss code{white-space:nowrap} .gloss .g{color:#cdd6d8}
+  .gloss .tac{color:var(--tac)}
+  .tlist{margin:18px 0}
+  .titem{margin:16px 0;padding-left:14px;border-left:2px solid var(--line)}
+  .titem .tn{color:var(--tac);font-weight:bold;font-size:14.5px}
+  .titem .td{color:#cdd6d8;font-size:14px;margin:4px 0 0}
+  .titem details{margin-top:6px}
+  .titem summary{cursor:pointer;color:var(--cyan);font-size:13px;width:max-content;list-style:none;user-select:none}
+  .titem summary::-webkit-details-marker{display:none}
+  .titem summary::before{content:"▸ show example"}
+  .titem details[open] summary::before{content:"▾ hide example"}
+  .titem .te{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:7px 11px;font-size:12.5px;line-height:1.6;color:#dcdcdc;margin-top:7px;white-space:pre;overflow-x:auto}
+  .titem .te .c{color:#5c6370;font-style:italic} .titem .te .kw{color:var(--kw)}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.75;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  .pager{display:flex;justify-content:space-between;margin:34px 0 0;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  #tip{position:absolute;display:none;max-width:440px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code examples and dropdowns are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a></p>
+  <h1>Chapter 0 · Reading Lean Code</h1>
+  <p class="sub">How to read the code in this book, the proof steps it uses, and how a number is represented &middot;
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">source</a></p>
+
+  <p class="lead">Every chapter of this book follows the same path. It describes a school arithmetic algorithm, shows the
+     algorithm written as a Lean&nbsp;4 program, lets you run it a step at a time, and then proves the
+     program correct for <em>every</em> input, not only the examples you happen to try. Some chapters end with
+     small exercises you can check in the browser.</p>
+
+  <p class="lead">This book assumes you have never written a line of Lean. The chapter you are reading is the one bit
+     of groundwork before the algorithms start: it gathers the few notations and proof steps that turn up
+     everywhere, and it explains how we store a number. Read it once and the rest should follow.</p>
+
+  <p class="lead">Wherever code appears, you can hover a highlighted <span style="color:var(--lem)">name</span> or
+     <span style="color:var(--tac)">tactic</span> for a short explanation. Inside a proof, the hover also shows the
+     goal still left to prove at that point. One convention to know: the hover shows the goal remaining
+     <em>after</em> that step runs — except for closing tactics, which show the goal they close. It is a
+     stripped-down, offline version of the live view Lean
+     gives you as you work. There is a <code>toNat</code> further down to try it on.</p>
+
+  <div class="nav">
+    <a href="#why">One proof, every input</a>
+    <a href="#notation">Notations</a>
+    <a href="#tactics">Tactics</a>
+    <a href="#repr">Representing a number</a>
+    <a href="#proofs">A first proof</a>
+  </div>
+
+  <!-- ===================== ONE PROOF, EVERY INPUT ===================== -->
+  <h2 id="why">One proof, every input</h2>
+  <p>Testing an algorithm runs it on a handful of inputs. A proof settles <em>every</em> input at once — including the
+     ones no one thought to try, which is exactly where real bugs hide. Checking that <code>7 + 8 = 15</code> a thousand
+     times tells you nothing about the thousand-and-first case; a proof rules the whole infinity out in a single stroke.
+     That gap between "works on my examples" and "works, always" is the difference this book is built on.</p>
+  <p>One caveat comes with the power. A proof only ever certifies what you actually <em>asked</em> it to — the
+     <strong>specification</strong>, the precise statement of what "correct" means. State that wrongly and a flawless
+     proof will faithfully certify the wrong thing, so half the craft is choosing the right property to prove. Several
+     later chapters come back to exactly this: telling a genuine specification from a plausible-but-weak one.</p>
+
+  <!-- ===================== NOTATION ===================== -->
+  <h2 id="notation">The notations</h2>
+  <p>The code is Lean&nbsp;4. Only a handful of notations come up repeatedly; the list below gathers them, so you can
+     read the definitions and proofs without having met the language before.</p>
+  <div class="gloss">
+    <code>def f := …</code><span class="g">Introduces a function or value named <code>f</code>.</span>
+    <code>abbrev N := …</code><span class="g">Names an abbreviation for an existing type — e.g. <code>Digit</code> for <code>Fin 10</code>.</span>
+    <code>theorem T : … := by …</code><span class="g">States a claim (after the colon) and gives its proof (after <code>by</code>).</span>
+    <code>example : … := by …</code><span class="g">The same as a theorem, but unnamed — used for one-off checks and the exercises.</span>
+    <code>Fin 10</code><span class="g">A whole number between 0 and 9. This is what we call a <code>Digit</code>.</span>
+    <code>Bool</code><span class="g">A true/false value. Here it records whether a column produced a carry or a borrow.</span>
+    <code>A × B</code><span class="g">A pair: one value of type <code>A</code> and one of type <code>B</code>. A column adder returns a digit paired with a carry.</span>
+    <code>p.1, p.2</code><span class="g">The first and second halves of a pair <code>p</code>. For a column adder, <code>p.1</code> is the digit written down and <code>p.2</code> the carry.</span>
+    <code>f : A → B</code><span class="g">A type annotation: <code>f</code> takes an <code>A</code> and returns a <code>B</code>. Chained arrows (<code>A → B → C</code>) mean a function of two arguments.</span>
+    <code>[]</code><span class="g">The empty list.</span>
+    <code>x :: xs</code><span class="g">A list whose first element is <code>x</code> and whose remaining elements are the list <code>xs</code>. A number is stored as such a list of digits.</span>
+    <code>| pattern =&gt; result</code><span class="g">One case of a definition: when the input has the shape <code>pattern</code>, the answer is <code>result</code>. Giving cases for <code>[]</code> and <code>x :: xs</code> is how a function over lists is defined.</span>
+    <code>| n + 1 =&gt;</code><span class="g">A pattern that matches any number ≥ 1 and names the number one below it <code>n</code>. Together with <code>| 0</code>, it covers every natural number.</span>
+    <code>let (d, c) := …</code><span class="g">Names the two halves of a pair, so they can be used separately on the next line.</span>
+    <code>d.val</code><span class="g">The plain number carried by a digit <code>d</code> (the 7 inside the digit 7).</span>
+    <code>⟨0, by omega⟩</code><span class="g">A digit written out in full: the value 0 together with a short proof (<code>by omega</code>) that it is a valid digit — that is, below 10. Because the proof travels with the value, an out-of-range digit can never be formed.</span>
+    <code>a + 10 * b, ≤</code><span class="g">Ordinary addition and multiplication, and "less than or equal to".</span>
+    <code>calc a = b := by … _ = c := by …</code><span class="g">A chain of equalities read top to bottom, each step justified on the right; the underscores repeat the previous line's right-hand side. Used in later chapters.</span>
+    <code>⊢ …</code><span class="g">Shown in a proof tooltip. It is the statement that still remains to be proved at that point.</span>
+  </div>
+
+  <!-- ===================== TACTICS ===================== -->
+  <h2 id="tactics">Tactics — the steps inside a proof</h2>
+  <p>A Lean proof is everything after <code>by</code>: a list of <em>tactics</em>. Each one takes the current goal
+     (the statement still to be proved) and turns it into something simpler, and the proof is done when no goals are
+     left. You never have to write any of this to read along, since the proofs explain each step in place. For the
+     exercises, these are the moves you choose from.</p>
+  <p>Each tactic below comes with a tiny example of its own, nothing to do with our algorithms, just enough to show
+     the shape of what it does.</p>
+  <div class="tlist" id="tlist"></div>
+  <div class="note">Two symbols stitch tactics together. Writing <code>t1 &lt;;&gt; t2</code> runs <code>t2</code> on
+     <em>every</em> goal that <code>t1</code> left behind. That is the trick in
+     <code>fin_cases a &lt;;&gt; fin_cases b &lt;;&gt; simp …</code>, which fans out into 100 goals and shuts them all in a
+     single line. Adding <code>at *</code> to a tactic, as in <code>simp … at *</code>, points it at the hypotheses
+     too, not just the goal.</div>
+
+  <!-- ===================== REPRESENTATION ===================== -->
+  <h2 id="repr">Representing a number</h2>
+  <p>Before we can prove anything about an algorithm, Lean has to be told what a number even is. We store one as the
+     list of its digits, least significant first, so <code>1239</code> is held as <code>[9, 3, 2, 1]</code>: units,
+     then tens, then hundreds, then thousands. A single digit, a value from 0 to 9, is a <code>Digit</code>; a list
+     of them is a <code>MultiDigit</code>.</p>
+  <p>One function ties this representation back to ordinary numbers: <code>toNat</code> reads a digit list and
+     returns the number it stands for.</p>
+  <pre class="lean" id="reprCode"></pre>
+  <p>The second line reads: the value of a list is its units digit, plus ten times the value of everything above it.
+     This one function runs through the entire book. Every algorithm's correctness theorem is phrased in terms of <code>toNat</code>, because
+     that is how you say precisely what you mean, that the digit list an algorithm hands back stands for the right
+     number.</p>
+  <p>The least-significant-first order matches how the algorithms actually run: units column first, the way you do it
+     by hand. That alignment keeps the recursion and the proofs simple.</p>
+  <div class="note"><b>Why it's built this way.</b> A guiding rule runs through the whole book: model the
+     <em>pen-and-paper</em> method, as faithfully as the code allows — not whatever shortcut a computer would prefer.
+     Lean already knows that a natural number is zero-or-a-successor, and it would happily let us define addition by
+     counting up one at a time, or multiplication as repeated addition. But that is not what you did at a desk. You
+     never added 8 and 7 by ticking up fifteen times; you <em>recalled</em> that 8 + 7 is 15, carry the 1 — a
+     memorised table plus a place-value rule. You knew multiplication <em>was</em> repeated addition, yet you never
+     used that fact to compute; you leaned on the times table and shifted columns. So here addition and
+     multiplication are built from small look-up tables applied column by column, division from a trial-digit search,
+     square roots from digit pairs — each algorithm mirroring the hand method it is named after. The payoff is that
+     when we prove one correct, we are proving that the <em>schoolbook procedure itself</em> is sound, not merely that
+     some equivalent arithmetic exists.</div>
+  <p>Two habits show up again and again, and together they explain the general shape of the proofs to come. The
+     first: a digit is a <code>Fin 10</code>, so it is below 10 by construction. There is no separate validity check
+     to drag around, and the odd table case that would need a digit of 10 or more cannot arise, so it is
+     dismissed on the spot. The second: the tactic <code>omega</code> handles routine arithmetic by itself, bounds
+     and carry conditions and the like. Leaning on it frees each proof to deal with
+     the real structure of the algorithm, the induction and the place-value identity, rather than grind through
+     calculation.</p>
+
+  <!-- ===================== FIRST PROOFS ===================== -->
+  <h2 id="proofs">A first proof</h2>
+  <p>Every result in this book is proved with tactics like the ones above. The earliest proofs in the project are
+     about <code>toNat</code> itself, and they are short enough to read start to finish, a good look at what a Lean
+     proof is really like before the algorithms arrive. <span class="sub" style="font-size:13px">(Hover any
+     highlighted step for its meaning and the goal left at that point.)</span></p>
+  <p>The first two facts just restate the two defining cases of <code>toNat</code>, so each holds
+     <em>by definition</em>. <code>rfl</code> checks that the two sides compute to the very same thing, and that is
+     all it takes.</p>
+  <pre class="lean" id="trivLemmas"></pre>
+  <p>Reading a digit list as a number is only half of it; we want to go the other way too. <code>fromNat</code>
+     builds the digit list for a number, stripping off the units digit with <code>% 10</code> and recursing on what
+     is left with <code>/ 10</code>.</p>
+  <pre class="lean" id="fromNatCode"></pre>
+  <p>Note the base case: zero is encoded as the empty list, and <code>fromNat</code> never writes leading zeros.
+     That is also why the round trip is stated in this direction — <code>[0, 4]</code> and <code>[0, 4, 0]</code>
+     both read back as 40, so encoding a number and reading it back is exact, while reading a list and re-encoding
+     it may drop redundant zeros.</p>
+  <p>The two should undo each other: encode a number, read it back, and you land on exactly what you started
+     with. That is the first real theorem in the book, and the first real induction. If you've not met induction:
+     it is the one move that lets a finite proof cover infinitely many numbers — show the claim for the base case,
+     then show that <em>if</em> it holds for the smaller number it holds for the next, and those two together pin it
+     down for every number at once. Every correctness proof in this book is built that way.</p>
+  <pre class="lean" id="roundTrip"></pre>
+  <p>Its shape is the shape every correctness proof in this book will take: induct, rewrite with the definitions,
+     apply the inductive hypothesis to the smaller number, then hand the leftover arithmetic to <code>omega</code>.
+     One wrinkle turns up right away. Because <code>fromNat</code> recurses on <code>n / 10</code> rather than
+     <code>n − 1</code>, the proof needs <em>strong</em> induction: the flavour that gives you a hypothesis for every
+     smaller number, not just the one directly below.</p>
+
+  <div class="note">Want to run any of this yourself? Clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a>, then
+     <code>lake exe cache get</code> (this pulls down a prebuilt Mathlib, so you are not left compiling it) followed
+     by <code>lake build</code>. The end-of-chapter Lean worksheets also need the checker server; that lives in the
+     repo under <code>web/checker</code>.</div>
+
+  <div class="pager">
+    <span></span>
+    <a href="cover.html">Contents</a>
+    <a href="addition.html">Vertical Addition →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+function reprCode(){ return `${C("-- A digit is a number 0–9; a number is a list of digits, units first.")}
+${K("abbrev")} ${TY("Digit")}      := Fin 10
+${K("def")}    ${TY("MultiDigit")} := List Digit
+
+${C("-- Read a digit list back as the ordinary number it stands for.")}
+${K("def")} ${T("toNat","lem","toNat : MultiDigit → Nat","","Turns a units-first digit list into the natural number it represents. Every algorithm's correctness theorem in the book is stated using it.")} : MultiDigit → Nat
+  | []      => 0                       ${C("-- the empty list stands for 0")}
+  | d :: ds => d.val + 10 * toNat ds   ${C("-- units digit, plus 10 times the rest")}`; }
+
+const TACTICS=[
+  {n:"rfl",
+   d:`Closes a goal whose two sides are already equal <em>by computation</em> — "true by definition". Settles concrete evaluations.`,
+   e:`${K("example")} : 2 + 2 = 4 := ${K("by")} rfl`},
+  {n:"decide",
+   d:`Closes a goal that can be settled by a finite check (a <em>decidable</em> proposition): Lean runs the decision procedure. Another way to dispatch concrete facts. Where <code>rfl</code> needs the two sides to compute to literally the same term, <code>decide</code> works for any yes/no question Lean knows how to check — inequalities, membership, table lookups.`,
+   e:`${K("example")} : 2 &lt; 5 := ${K("by")} decide`},
+  {n:"native_decide",
+   d:`Like <code>decide</code>, but runs the check as compiled code, so it can chew through much larger finite computations (verifying a whole long division, say). The price: you are trusting the compiler, not just Lean's kernel.`,
+   e:`${K("example")} : 123 * 457 = 56211 := ${K("by")} native_decide`},
+  {n:"rw [h]",
+   d:`Rewrites the goal using the equality <code>h</code>, replacing its left-hand side with its right wherever it appears. The manual, one-shot cousin of <code>simp</code>.`,
+   e:`${K("example")} (n m : Nat) (h : n = m) : n + 1 = m + 1 := ${K("by")} rw [h]`},
+  {n:"simp [lemmas]",
+   d:`Simplifies the goal by repeatedly rewriting with known equalities and the lemmas you list, until nothing more applies — often closing it outright.`,
+   e:`${K("example")} (n : Nat) : n + 0 = n := ${K("by")} simp`},
+  {n:"simp only [lemmas]",
+   d:`The same, but using <em>only</em> the lemmas you name: a controlled, predictable round of rewriting.`,
+   e:`${K("example")} (n : Nat) : n + 0 = n := ${K("by")} simp only [Nat.add_zero]`},
+  {n:"simpa using h",
+   d:`Simplifies both the goal and the fact <code>h</code>, then uses <code>h</code> to finish. The usual way to apply a known result "up to" a little simplification — e.g. clearing a leftover <code>+ 0</code>.`,
+   e:`${K("example")} (n m : Nat) (h : n + 0 = m) : n = m := ${K("by")} simpa using h`},
+  {n:"omega",
+   d:`Decides goals about whole-number arithmetic: linear equalities and inequalities with <code>+</code>, <code>−</code>, <code>×</code> by constants, and <code>%</code> and <code>/</code> by constants. Discharges bounds, carries, and place-value bookkeeping.`,
+   e:`${K("example")} (n : Nat) (h : n + 1 = 5) : n = 4 := ${K("by")} omega`},
+  {n:"ring",
+   d:`Proves equalities true by pure algebraic rearrangement — commuting, distributing, expanding powers. Picks up where <code>omega</code> stops: <code>omega</code> can't multiply two variables together; <code>ring</code> can.`,
+   e:`${K("example")} (a b : Nat) : (a + b)^2 = a^2 + 2*a*b + b^2 := ${K("by")} ring`},
+  {n:"fin_cases x",
+   d:`Splits a variable ranging over a finite type — such as a <code>Digit</code> (<code>Fin 10</code>) — into each of its concrete values. This is how the 100-entry tables are checked exhaustively.`,
+   e:`${K("example")} (x : Fin 3) : x.val &lt; 3 := ${K("by")}\n  fin_cases x &lt;;&gt; decide   ${C("-- one goal each for x = 0, 1, 2")}\n  ${C("-- &lt;;&gt; : run the next tactic on every goal this one produced")}`},
+  {n:"cases x",
+   d:`Splits <code>x</code> into its possible shapes — a <code>Bool</code> into <code>false</code> and <code>true</code>, a list into <code>[]</code> and <code>x :: xs</code>.`,
+   e:`${K("example")} (b : Bool) : b || true = true := ${K("by")} cases b &lt;;&gt; rfl`},
+  {n:"induction x generalizing y",
+   d:`Proves a statement about <code>x</code> by induction. <code>generalizing y</code> keeps <code>y</code> free, so the inductive hypothesis still applies when a later step hands the recursion a different <code>y</code> (for us, a different carry). Later proofs add <code>generalizing c</code> when the recursion changes <code>c</code> as it descends — you'll meet it in the addition chapter.`,
+   e:`${K("example")} (n : Nat) : 0 + n = n := ${K("by")}\n  induction n with\n  | zero      =&gt; rfl\n  | succ k ih =&gt; simp [ih]   ${C("-- ih: the result for the smaller k")}`},
+  {n:"have h := …",
+   d:`Records an intermediate fact <code>h</code> for later steps to use — typically a single-column result or an inductive hypothesis applied to specific arguments — and <code>exact h</code> then closes a goal by handing it exactly that fact.`,
+   e:`${K("example")} (n : Nat) (hn : n = 3) : n + 1 = 4 := ${K("by")}\n  have h : n + 1 = 3 + 1 := ${K("by")} rw [hn]   ${C("-- record a fact, derived via hn")}\n  exact h                                ${C("-- ...and use it (3 + 1 is 4)")}`},
+];
+$("tlist").innerHTML=TACTICS.map(t=>
+  `<div class="titem"><div class="tn">${t.n}</div><div class="td">${t.d}</div>`+
+  `<details><summary></summary><div class="te">${t.e}</div></details></div>`).join("");
+
+function trivLemmas(){ return `${C("-- These two simply restate the defining cases of toNat,")}
+${C("-- so each holds by definition; rfl checks both sides compute alike.")}
+${T("@[simp]","lem","@[simp]","","Registers the lemma so later proofs rewrite with it automatically, left to right.")} ${K("theorem")} ${T("toNat_nil","lem","toNat_nil : toNat [] = 0","","The empty list denotes 0.")} : toNat [] = 0 := ${T("rfl","tac","rfl","toNat [] = 0","Reflexivity: toNat [] is 0 by its first defining case, so the two sides are literally identical — no work to do.")}
+
+${T("@[simp]","lem","@[simp]","","Registers the lemma for automatic rewriting.")} ${K("theorem")} ${T("toNat_cons","lem","toNat_cons : toNat (d :: ds) = d.val + 10 * toNat ds","","A list's value is its units digit plus ten times the value of everything above it.")} (d : Digit) (ds : MultiDigit) :
+    toNat (d :: ds) = d.val + 10 * toNat ds := ${T("rfl","tac","rfl","toNat (d :: ds) = d.val + 10 * toNat ds","True by the second defining case of toNat; both sides are definitionally equal.")}`; }
+
+function fromNatCode(){ return `${C("-- The other direction: build the digit list of a number,")}
+${C("-- peeling off the units digit with % 10 and recursing on / 10.")}
+${K("def")} ${T("fromNat","lem","fromNat : Nat → MultiDigit","","Builds the units-first digit list of n: the units digit is n % 10, and the rest is fromNat (n / 10).")} : Nat → MultiDigit
+  | 0     => []
+  | n + 1 => ⟨(n + 1) % 10, ${T("by omega","tac","by omega","(n + 1) % 10 < 10","Proves the value lies below 10, so it is a valid Digit; the proof travels with the value.")}⟩ :: fromNat ((n + 1) / 10)
+${T("termination_by","lem","termination_by n => n","","Not a tactic — a clause on the definition itself: fromNat recurses on n / 10, strictly smaller than n; this clause names the decreasing measure, so Lean accepts that the recursion stops.")} n => n`; }
+
+function roundTrip(){ return `${C("-- The two are inverse: encode a number, read it back, get the same number.")}
+${K("theorem")} ${T("toNat_fromNat","lem","toNat_fromNat (n : Nat) : toNat (fromNat n) = n","","The round-trip identity: it certifies that the digit-list representation faithfully encodes every natural number.")} (n : Nat) : toNat (fromNat n) = n := ${K("by")}
+  ${T("induction","tac","induction n using Nat.strong_induction_on","toNat (fromNat n) = n","Strong induction: to prove the claim for n we may assume it for EVERY smaller m — the hypothesis ih : ∀ m, m < n → toNat (fromNat m) = m. Since fromNat recurses on n / 10, not n − 1, ordinary step-by-one induction gives no usable hypothesis; strong induction does.")} n using Nat.strong_induction_on ${K("with")}
+  ${T("| _ n ih =>","tac","| _ n ih =>","","The one case of strong induction. _ is the (unnamed) case label; n is the number under consideration; ih is the hypothesis 'the claim holds for every m < n'.")}
+    ${T("match","tac","match n with","","Matches the two cases of fromNat. Strong induction gave us the hypothesis but did not split n into shapes — it has just one case. This match does the split, mirroring the two defining cases of fromNat.")} n ${K("with")}
+    | 0     => ${T("simp","tac","simp [fromNat]","toNat (fromNat 0) = 0","fromNat 0 = [] and toNat [] = 0, so simp closes this goal, the base case.")} [fromNat]
+    | k + 1 =>
+      ${T("rw","tac","rw [fromNat, toNat_cons]","(k+1) % 10 + 10 * toNat (fromNat ((k+1) / 10)) = k + 1","Unfolds one step of fromNat — peeling off the units digit (k+1) % 10 — then rewrites toNat of a cons into 'units digit + 10 × value of the rest'.")} [fromNat, toNat_cons]
+      ${T("rw","tac","rw [ih ((k+1) / 10) (by omega)]","↑⟨(k+1) % 10, ⋯⟩ + 10 * ((k+1)/10) = k + 1","The inductive hypothesis, applied to (k+1) / 10, says toNat (fromNat ((k+1)/10)) = (k+1)/10. Rewriting replaces the recursive toNat with (k+1)/10. The units digit is still wrapped in its Fin constructor — that is the ↑⟨…⟩.")} [ih ((k + 1) / 10) (${T("by omega","tac","by omega","(k + 1) / 10 < k + 1","Dividing a positive number by 10 strictly shrinks it; this is what licenses applying the hypothesis to the smaller number.")})]
+      ${T("simp only","tac","simp only []","(k+1) % 10 + 10 * ((k+1)/10) = k + 1","Unwraps the Fin constructor: (⟨x, _⟩).val becomes x. Now the goal is pure arithmetic, ready for omega.")} []
+      ${T("omega","tac","omega","(k+1) % 10 + 10 * ((k+1) / 10) = k + 1","This is exactly the division identity n = n % 10 + 10 * (n / 10); omega understands % and / by constants and closes this goal, finishing the proof.")}`; }
+
+$("reprCode").innerHTML=reprCode();
+$("trivLemmas").innerHTML=trivLemmas();
+$("fromNatCode").innerHTML=fromNatCode();
+$("roundTrip").innerHTML=roundTrip();
+bindTips();
+</script>
+<script src="book.js"></script>
+</body>
+</html>

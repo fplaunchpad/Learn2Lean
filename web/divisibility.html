@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Divisibility Tests — described, implemented, visualised, proved</title>
+<meta name="description" content="Why the divisibility tests for 2, 5, 3, 9 and 11 work — modular arithmetic, digit sums and alternating sums, proved in Lean 4."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔢</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:6px 0}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:130px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .mbtn{background:transparent;color:var(--muted);border-color:var(--line)} .mbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .board{display:flex;flex-direction:column;align-items:flex-start;width:max-content;background:#000;border-radius:8px;padding:12px 16px;overflow-x:auto;max-width:100%}
+  .row{display:flex;align-items:center}
+  .cell{width:36px;height:36px;margin:3px;border-radius:5px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17px;color:#ccc}
+  .cell.act{border-color:var(--yellow);color:var(--yellow)} .cell.future{border-color:#222;color:#555}
+  .cell.ev{border-color:var(--green);color:var(--green)} .cell.od{border-color:var(--orange);color:var(--orange)}
+  .leg{margin-top:8px;font-size:12px} .leg .ev{color:var(--green);margin-right:16px} .leg .od{color:var(--orange)}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:15px;word-break:break-word}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:14px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin-top:10px;font-size:13px;color:#cfe7ec;max-width:560px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff} pre.lean .ph{color:var(--yellow)}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:440px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .lawnote{background:#11181a;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0}
+  .lawnote .lt{color:var(--cyan);font-weight:bold}
+  .lawgrid{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+  .lawcard{flex:1;min-width:290px;background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .lawcard .ch{color:#fff;font-weight:600;margin-bottom:8px;font-size:13.5px}
+  .lawcard .eq{font-size:13px;line-height:1.9;white-space:pre-wrap}
+  .lawcard .drop{color:#5c6370} .lawcard .keep{color:var(--yellow)} .lawcard .res{color:var(--green)}
+  .recall{background:#15110a;border-left:3px solid var(--orange);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#ecdcc7;border-radius:0 6px 6px 0}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .small{font-size:13px;color:var(--muted)}
+  .modlaws{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:14px 0;display:flex;flex-direction:column;gap:9px}
+  .modlaws .ml{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  .modlaws .lk{color:var(--cyan);font-size:11px;min-width:104px;text-transform:uppercase;letter-spacing:.05em}
+  .modlaws .lf{color:var(--yellow)}
+  textarea.led{width:100%;min-height:48px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a> · <a href="prologue.html">Ch 0</a> · <a href="addition.html">Ch 1</a> · <a href="subtraction.html">Ch 2</a> · <a href="multiplication.html">Ch 3</a> · <a href="division.html">Ch 4</a></p>
+  <h1>Divisibility Tests</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <div class="recall">This chapter is different: not one full-number algorithm but a family of <em>shortcuts</em>. It leans on
+     the long division of <a href="division.html">Chapter 4</a> — the remainder function <code>myMod</code> is
+     literally <code>(longDiv a b).2</code>. What's new is <strong>modular arithmetic</strong>, reasoning about
+     remainders, so the proofs look different from the earlier place-value inductions.</div>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the tests do</h2>
+  <p>You can often tell whether one number divides another just by looking at its digits, with no division at all. A
+     number is even exactly when its last digit is; divisible by 5 exactly when the last digit is 0 or 5; divisible
+     by 3 or by 9 exactly when the <strong>sum of its digits</strong> is; and divisible by 11 exactly when the
+     <strong>alternating sum</strong> of its digits is.</p>
+  <p>All of these come from one idea: <strong>modular arithmetic</strong>. It cares only about the remainder after
+     division and throws the rest away.</p>
+  <p>Take 10 divided by 3. Since <code>10 = 3 × 3 + 1</code>, the remainder is 1. We write that
+     <code>10 ≡ 1 (mod 3)</code>, read "10 is congruent to 1, modulo 3" — all it means is that 10 and 1 leave the
+     same remainder when divided by 3.</p>
+  <p>Remainders earn this notation because they survive addition and multiplication:</p>
+  <div class="modlaws">
+    <div class="ml"><span class="lk">addition</span><span class="lf">(a + b) mod m = ((a mod m) + (b mod m)) mod m</span></div>
+    <div class="ml"><span class="lk">multiplication</span><span class="lf">(a × b) mod m = ((a mod m) × (b mod m)) mod m</span></div>
+  </div>
+  <p>You can replace a number by its remainder partway through a sum or a product, and the final remainder is
+     unchanged. That is what lets the tests work one digit at a time. Each place value <code>10ⁱ</code> has a simple
+     remainder, so a number's remainder is built from its digits' remainders, each weighted by its place-value
+     remainder. That is why only the digits matter:</p>
+  <ol>
+    <li><strong>2 and 5:</strong> <code>10 ≡ 0</code>. Every place above the units is a multiple of 2 (and of 5), so
+        it contributes nothing to the remainder — only the <em>units digit</em> is left.</li>
+    <li><strong>3 and 9:</strong> <code>10 ≡ 1</code>, so <code>10ⁱ ≡ 1</code> for every <code>i</code>. Each digit
+        contributes its plain face value, and the whole number's remainder is the <em>digit sum</em>'s remainder.</li>
+    <li><strong>11:</strong> <code>10 ≡ −1</code>, so <code>10ⁱ ≡ (−1)ⁱ</code> — the place values alternate in sign.
+        Digits in even positions (counting from the units digit as position 0) add, digits in odd positions subtract: the <em>alternating sum</em>.</li>
+  </ol>
+  <div class="note"><b>Why it's built this way.</b> The tests themselves are the school rules — add the digits for 9,
+     alternate them for 11. Underneath we need a notion of remainder, and rather than reach for a built-in <code>%</code>,
+     the chapter reuses the <em>long division you already verified</em> in Chapter 4 to define its own <code>myMod</code>,
+     then proves it agrees with <code>Nat.mod</code>. Each chapter standing on the one before it, rather than on
+     built-ins, is the through-line of the book (see <a href="prologue.html#repr">the prologue</a>).</div>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>A test is a statement about remainders. So we need three pieces: a remainder function, a couple of digit
+     summaries, and the tests themselves stated through them.</p>
+  <div id="divImpl"></div>
+  <div class="note">The <code>(…).1</code> / <code>(…).2</code> are pair projections — the first and second components
+     of the <code>(even, odd)</code> pair <code>altSums</code> returns — not digits. Each test comes in two
+     forms: a pure number-theory statement (e.g. <code>9 ∣ toNat a ↔ 9 ∣ digitSum a</code>) and a
+     <code>myMod</code> version that connects it to the actual remainder our long division computes.</div>
+
+  <!-- 3. VISUALIZATION -->
+  <h2>3 · See it run — the congruence, suffix by suffix</h2>
+  <p>Pick a test, then step in from the units digit. At each suffix the panel checks the invariant that makes the
+     rule work: the suffix's value and its digit summary leave the <em>same remainder</em>. It never breaks, and that
+     is the inductive proof made visible.</p>
+  <div class="stage">
+    <div class="controls">
+      <input class="num" id="opA" value="1234"/>
+      <button class="mbtn" id="m3">÷ 3</button><button class="mbtn on" id="m9">÷ 9</button><button class="mbtn" id="m11">÷ 11</button>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="stepdetail" id="detail"></div>
+    <div class="srow" style="margin-top:12px"><div class="ipanel" id="ipanel"></div></div>
+  </div>
+  <p>For 3 and 9 the invariant is <code>value % m = digitSum % m</code>; for 11 it is
+     <code>(value + O) % 11 = E % 11</code>, with <code>E</code> the even-position sum
+     (<span style="color:var(--green)">green</span>) and <code>O</code> the odd-position sum
+     (<span style="color:var(--orange)">orange</span>). Bringing in one more digit re-establishes the same
+     congruence, so by the end the whole number and its digit summary agree. That is the test.</p>
+
+  <!-- 4. THINK LIKE A VERIFIER -->
+  <h2>4 · Before the proof — think like a verifier</h2>
+  <p>Before reading the proof, predict its shape. Each test is a claim about remainders. Ask which fact about
+     the number 10 powers it, and what equation the proof will actually establish.</p>
+
+  <h3>What makes the digit-sum rule work?</h3>
+  <p>The tests for 3 and 9 add up the digits. Which fact about <code>10</code> is doing the work?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="keyMCQ"></div></div>
+
+  <h3>Would summing digits test divisibility by 7?</h3>
+  <div class="ex"><span class="tag">PREDICT</span><div id="sevenMCQ"></div></div>
+
+  <h3>Why an <em>alternating</em> sum for 11?</h3>
+  <div class="ex"><span class="tag">PREDICT</span><div id="elevenMCQ"></div></div>
+
+  <h3>What will the core theorem state?</h3>
+  <p>For 9, before the divisibility <code>↔</code>, there is a sharper equality the proof really turns on. Which?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="meanMCQ"></div></div>
+
+  <!-- 5. PROOF -->
+  <h2>5 · The formal Lean proof</h2>
+  <p>Each layer comes in two parts. First <strong>the argument</strong> in plain words: read just these and you'll
+     understand why every test is correct. Then, folded underneath, <strong>the full Lean proof</strong>, for anyone
+     who wants the machine-checked details. You can follow the whole section without opening a single dropdown.</p>
+  <p>The tests share one backbone: reduce to a statement about <code>%</code>, then push the remainder through the
+     digits with the two modular laws Lean already provides, <code>Nat.add_mod</code> and <code>Nat.mul_mod</code>.
+     The digit-sum congruence is a clean place-value induction. The alternating-sum one is the same idea with
+     <code>10 ≡ −1</code>, carried by <code>Nat.ModEq</code>. One new notation: <code>a ≡ b [MOD n]</code> is Lean's
+     name for <code>a % n = b % n</code> — the congruence we have been writing all chapter, packaged as a relation
+     you can chain in a <code>calc</code> and add to on both sides (<code>Nat.ModEq.add_left</code> and friends).</p>
+  <div class="lawnote">
+    <div class="lt">Why the two modular laws hold</div>
+    <p class="small" style="margin:4px 0 0">Write each number as <code>q·m + r</code>. Under a remainder the
+       <span style="color:#5c6370">grey</span> multiple of <code>m</code> always vanishes, and only the
+       <span style="color:var(--yellow)">remainders</span> are left.</p>
+    <div class="lawgrid">
+      <div class="lawcard">
+        <div class="ch">Addition — <code>Nat.add_mod</code></div>
+<div class="eq">a = q₁·m + r₁ ,  b = q₂·m + r₂
+a + b = <span class="drop">(q₁+q₂)·m</span> + <span class="keep">(r₁+r₂)</span>
+<span class="res">(a+b) % m = (r₁+r₂) % m
+          = ((a%m)+(b%m)) % m</span></div>
+      </div>
+      <div class="lawcard">
+        <div class="ch">Multiplication — <code>Nat.mul_mod</code></div>
+<div class="eq">a = q₁·m + r₁ ,  b = q₂·m + r₂
+a·b = <span class="drop">(q₁q₂m + q₁r₂ + q₂r₁)·m</span> + <span class="keep">r₁·r₂</span>
+<span class="res">(a·b) % m = (r₁·r₂) % m
+          = ((a%m)·(b%m)) % m</span></div>
+      </div>
+    </div>
+    <p class="small" style="margin:8px 0 0">Both are already in Lean's core, so the chapter cites them rather than
+       reproving them.</p>
+  </div>
+  <div id="proofDiv"></div>
+  <p class="small">The <code>÷2</code>, <code>÷3</code> and <code>÷5</code> tests are also in the repo: 2 and 5 go by
+     a direct divisibility induction on the units digit — no mod laws needed — and 3 exactly like 9.</p>
+
+  <!-- 6. TEST THE IDEAS -->
+  <h2>6 · Test the ideas</h2>
+
+  <h3>Why only the units digit for 2 and 5?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="twofiveMCQ"></div></div>
+
+  <h3>Why the 9·(tail) term vanishes</h3>
+  <p>The ÷9 induction rewrites <code>10 · tail</code> as <code>tail + 9 · tail</code>. What does that buy?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="vanishMCQ"></div></div>
+
+  <h3>What the bridge lemma is for</h3>
+  <p><code>myMod_eq_natMod</code> proves <code>myMod a b = toNat a % b</code>. Why does the chapter need it?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="bridgeMCQ"></div></div>
+
+  <h3>What the ← direction buys</h3>
+  <p>The tests are stated as <code>↔</code>. What does the ← direction (digit sum divisible ⇒ number divisible) buy you?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="iffMCQ"></div></div>
+
+  <!-- 7. EXERCISES -->
+  <h2>7 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill. Press <b>Run</b> and Lean compiles your
+     code on the server. <b>Run all</b> checks every cell in turn, <b>Reset all</b> restores the blank
+     cells, and every cell hides a <em>reference solution</em> you can reveal once you've tried.
+     <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>. The <code>myMod</code>
+     cell needs <code>native_decide</code> (it runs the whole long division); <code>altSums</code> is small enough for
+     plain <code>decide</code> — the contrast is the point. The first run is slow.)</span></p>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proofs are exactly those in §5 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run it in VS Code.</p>
+
+  <div class="pager">
+    <a href="division.html">← Long Division</a>
+    <a href="cover.html">Contents</a>
+    <a href="gcd.html">Euclid's GCD →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+
+const DV={a:"1234",mode:9,d:null,step:0};
+function computeDivis(aStr,mode){
+  const n=aStr.length,states=[];
+  for(let j=0;j<n;j++){
+    const suf=aStr.slice(n-1-j),val=BigInt(suf);
+    if(mode===11){let E=0n,O=0n;for(let p=0;p<suf.length;p++){const dg=BigInt(suf[suf.length-1-p]);if(p%2===0)E+=dg;else O+=dg;}states.push({val,E,O});}
+    else{let ds=0n;for(const ch of suf)ds+=BigInt(ch);states.push({val,dsum:ds});}
+  }
+  return {n,states,mode};
+}
+function divisRender(){
+  const d=DV.d,n=d.n,m=DV.mode;let h="";
+  h+='<div class="row">';
+  for(let i=0;i<n;i++){const listIdx=n-1-i,rev=listIdx<=DV.step,dig=DV.a[i];
+    let cls=rev?(m===11?(listIdx%2===0?"ev":"od"):"act"):"future";
+    h+=`<div class="cell ${cls}">${dig}</div>`;}
+  h+='</div>';
+  if(m===11)h+='<div class="leg"><span class="ev">■ even position (E)</span><span class="od">■ odd position (O)</span></div>';
+  $("board").innerHTML=h;
+  let log="";
+  for(let j=0;j<=DV.step;j++){const s=d.states[j],act=j===DV.step;
+    const line=m===11
+      ? `${j+1}-digit suffix:&nbsp; (${s.val} + ${s.O}) % 11 = ${(s.val+s.O)%11n} &nbsp;·&nbsp; E ${s.E} % 11 = ${s.E%11n}`
+      : `${j+1}-digit suffix:&nbsp; value ${s.val} % ${m} = ${s.val%BigInt(m)} &nbsp;·&nbsp; digitSum ${s.dsum} % ${m} = ${s.dsum%BigInt(m)}`;
+    log+=`<div style="padding:3px 7px;margin:2px 0;border-radius:5px;${act?"background:#2a2a00;color:var(--yellow)":"color:#00aaff"}">${line}</div>`;}
+  $("detail").innerHTML=log;
+  const s=d.states[DV.step];
+  if(m===11){const lhs=(s.val+s.O)%11n,rhs=s.E%11n,ok=lhs===rhs;
+    $("ipanel").innerHTML=
+      `<div class="ititle">After the ${DV.step+1}-digit suffix</div>`+
+      `<div class="igen">(value + O) % 11 = E % 11</div>`+
+      `<div class="ieq" style="color:var(--green)">E (even positions) = ${s.E}</div>`+
+      `<div class="ieq" style="color:var(--orange)">O (odd positions) = ${s.O}</div>`+
+      `<div class="ieq">(${s.val} + ${s.O}) % 11 = ${lhs}</div>`+
+      `<div class="ieq">${s.E} % 11 = ${rhs} &nbsp;<span class="small">(value % 11 = ${s.val%11n})</span></div>`+
+      (ok?`<div class="iok">✓ congruent (mod 11)</div>`:`<div class="ino">✗</div>`);
+  }else{const M=BigInt(m),lhs=s.val%M,rhs=s.dsum%M,ok=lhs===rhs;
+    $("ipanel").innerHTML=
+      `<div class="ititle">After the ${DV.step+1}-digit suffix</div>`+
+      `<div class="igen">value % ${m} = digitSum % ${m}</div>`+
+      `<div class="ieq">${s.val} % ${m} = ${lhs}</div>`+
+      `<div class="ieq">${s.dsum} % ${m} = ${rhs}</div>`+
+      (ok?`<div class="iok">✓ congruent (mod ${m})</div>`:`<div class="ino">✗</div>`);}
+  $("lbl").textContent=`suffix ${DV.step+1} of ${n}`;$("prev").disabled=DV.step<=0;$("next").disabled=DV.step>=n-1;
+}
+function setMode(m){DV.mode=m;$("m3").classList.toggle("on",m===3);$("m9").classList.toggle("on",m===9);$("m11").classList.toggle("on",m===11);start();}
+function start(){DV.a=clean($("opA").value);DV.d=computeDivis(DV.a,DV.mode);DV.step=0;divisRender();}
+$("go").onclick=start;$("m3").onclick=()=>setMode(3);$("m9").onclick=()=>setMode(9);$("m11").onclick=()=>setMode(11);
+$("prev").onclick=()=>{if(DV.step>0){DV.step--;divisRender();}};$("next").onclick=()=>{if(DV.step<DV.d.n-1){DV.step++;divisRender();}};
+$("opA").addEventListener("keydown",e=>{if(e.key==="Enter")start();});
+
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+function divImpl(){ return `<p class="pstep">The remainder <span class="n">— reusing long division</span></p>
+<p><code>myMod</code> is just the remainder returned by the long division of Chapter 4; a bridge lemma then ties it to Lean's own <code>%</code> so the standard modular-arithmetic lemmas apply.</p>
+<pre class="lean">${K("def")} ${T("myMod","lem","myMod (a : MultiDigit) (b : Digit) : Nat","","The remainder of a ÷ b, taken straight from longDiv (Chapter 4).")} (a : MultiDigit) (b : Digit) : Nat :=
+  (${T("longDiv","lem","longDiv : MultiDigit → Digit → MultiDigit × Nat","","The verified long division from Chapter 4; its second component is the remainder.")} a b).2
+
+${C("-- Bridge: our remainder agrees with Lean's %, so core mod lemmas apply.")}
+${K("theorem")} ${T("myMod_eq_natMod","lem","myMod_eq_natMod (a) (b) (hb : b.val ≠ 0) : myMod a b = toNat a % b.val","","Certified from Chapter 4's longDivHelper_correct: myMod is exactly toNat a % b. Every test is proved by rewriting through this. Full proof in §5.")} (a : MultiDigit) (b : Digit) (hb : b.val ≠ 0) :
+    myMod a b = toNat a % b.val</pre>
+<p class="pstep">The digit summaries</p>
+<p>Three ways to read a number's digits: its <code>unitsDigit</code>, its <code>digitSum</code>, and its
+<code>altSums</code> — the even-position and odd-position sums, which swap each time a digit is prepended.</p>
+<pre class="lean">${K("def")} ${T("unitsDigit","lem","unitsDigit (a : MultiDigit) : Nat","","The least-significant digit — the head of the units-first list.")} : MultiDigit → Nat
+  | []     => 0
+  | d :: _ => d.val
+
+${K("def")} ${T("digitSum","lem","digitSum (a : MultiDigit) : Nat","","Adds up every digit's value.")} (a : MultiDigit) : Nat :=
+  a.foldl (fun acc d => acc + d.val) 0
+
+${K("def")} ${T("altSums","lem","altSums : MultiDigit → Nat × Nat","","(even-position sum, odd-position sum), counting from the units. Prepending a digit shifts every position up by one, so the two sums swap — hence the (…).2, (…).1 swap in the step.")} : MultiDigit → Nat × Nat
+  | []      => (0, 0)
+  | d :: ds => (d.val + (altSums ds).2, (altSums ds).1)</pre>
+<p class="pstep">The tests</p>
+<p>Each rule is one theorem. The units-digit rules (2, 5), the digit-sum rules (3, 9), and the alternating-sum rule (11):</p>
+<pre class="lean">${K("theorem")} ${T("div_by_2","lem","div_by_2 (a) : 2 ∣ toNat a ↔ 2 ∣ unitsDigit a","","Even iff the units digit is even.")} (a : MultiDigit) : 2 ∣ toNat a ↔ 2 ∣ unitsDigit a
+${K("theorem")} ${T("div_by_5","lem","div_by_5 (a) : 5 ∣ toNat a ↔ 5 ∣ unitsDigit a","","Divisible by 5 iff the units digit is 0 or 5.")} (a : MultiDigit) : 5 ∣ toNat a ↔ 5 ∣ unitsDigit a
+${K("theorem")} ${T("div_by_3","lem","div_by_3 (a) : 3 ∣ toNat a ↔ 3 ∣ digitSum a","","Divisible by 3 iff the digit sum is.")} (a : MultiDigit) : 3 ∣ toNat a ↔ 3 ∣ digitSum a
+${K("theorem")} ${T("div_by_9","lem","div_by_9 (a) : 9 ∣ toNat a ↔ 9 ∣ digitSum a","","Divisible by 9 iff the digit sum is.")} (a : MultiDigit) : 9 ∣ toNat a ↔ 9 ∣ digitSum a
+${K("theorem")} ${T("div_by_11","lem","div_by_11 (a) : 11 ∣ toNat a ↔ (altSums a).1 % 11 = (altSums a).2 % 11","","Divisible by 11 iff the even- and odd-position sums agree mod 11 — the alternating-sum test, stated subtraction-free.")} (a : MultiDigit) : 11 ∣ toNat a ↔ (altSums a).1 % 11 = (altSums a).2 % 11
+
+${C("-- Each test also comes in a myMod form, tied to the remainder our algorithm computes:")}
+${K("theorem")} ${T("myMod_div_by_3","lem","myMod_div_by_3 (a) : myMod a ⟨3, by decide⟩ = 0 ↔ 3 ∣ digitSum a","","Proved by rewriting through the bridge (myMod_eq_natMod), then citing the pure test.")} (a : MultiDigit) : myMod a ⟨3, ${K("by")} decide⟩ = 0 ↔ 3 ∣ digitSum a
+${K("theorem")} ${T("myMod_div_by_9","lem","myMod_div_by_9 (a) : myMod a ⟨9, by decide⟩ = 0 ↔ 9 ∣ digitSum a","","Same shape for 9: bridge to %, then cite div_by_9.")} (a : MultiDigit) : myMod a ⟨9, ${K("by")} decide⟩ = 0 ↔ 9 ∣ digitSum a</pre>`; }
+
+function buildDivisProof(){ return `<p class="pstep">Layer 1 · Reduce to remainders <span class="n">— the bridge and the two laws</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Every test is really a statement about the remainder, so first we tie our own remainder to Lean's. The algorithm computes <code>myMod</code>; Lean reasons about <code>%</code>. The bridge lemma says they are the same number, and its whole content comes from Chapter 4: long division returned a quotient and remainder that rebuild the input with the remainder below the divisor, and a number already smaller than the modulus is its own remainder. With that one equality in hand, we can state each test on what the algorithm computes yet prove it with Lean's core mod lemmas — <code>Nat.add_mod</code> and <code>Nat.mul_mod</code>, which just say a remainder only ever depends on the parts' remainders.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- myMod agrees with Lean's %, proved from Chapter 4's longDivHelper_correct.")}
+${K("theorem")} ${T("myMod_eq_natMod","lem","myMod_eq_natMod : myMod a b = toNat a % b.val","","Lets every test be stated on myMod (what the algorithm computes) yet proved with core % lemmas.")} (a : MultiDigit) (b : Digit) (hb : b.val ≠ 0) :
+    myMod a b = toNat a % b.val := ${K("by")}
+  ${T("unfold","tac","unfold myMod","","Replace myMod a b by its definition (longDiv a b).2.")} myMod
+  simp only [longDiv]
+  ${T("cases","tac","cases h_rec : longDivHelper a.reverse b 0 with","","Split on the (quotient, remainder) pair longDivHelper returns, naming the equation h_rec.")} h_rec : longDivHelper a.reverse b 0 ${K("with")}
+  | mk q r =>
+  simp only []
+  ${C("-- The Chapter 4 correctness lemma: the returned q, r satisfy the division equation.")}
+  have h := ${T("longDivHelper_correct","lem","longDivHelper_correct a.reverse b hb 0 (by omega)","","Chapter 4's proof that long division is correct: the quotient/remainder it returns really reconstruct the input, with r < b.")} a.reverse b hb 0 (${K("by")} omega)
+  rw [h_rec] at h
+  simp only at h
+  ${T("obtain","tac","obtain ⟨heq, hlt⟩ := h","","Split the correctness result into the reconstruction equation heq and the bound hlt : r < b.val.")} ⟨heq, hlt⟩ := h
+  simp only [Nat.zero_mul, Nat.zero_add, List.reverse_reverse] at heq
+  symm
+  ${K("calc")} toNat a % b.val
+      = (toNat q.reverse * b.val + r) % b.val := ${K("by")} rw [← heq]
+    _ = r % b.val := ${K("by")} simp [Nat.add_mod]
+    _ = r          := ${T("Nat.mod_eq_of_lt","lem","Nat.mod_eq_of_lt : r < b.val → r % b.val = r","","A number already smaller than the modulus is its own remainder — discharged by hlt.")} hlt
+
+${C("-- The two laws power the digit-sum tests; the 11 test uses the same idea packaged as Nat.ModEq:")}
+#check ${T("Nat.add_mod","lem","Nat.add_mod : (a + b) % m = ((a % m) + (b % m)) % m","","Addition distributes over mod.")} ${C("-- (a + b) % m = ((a % m) + (b % m)) % m")}
+#check ${T("Nat.mul_mod","lem","Nat.mul_mod : (a * b) % m = ((a % m) * (b % m)) % m","","Multiplication distributes over mod.")} ${C("-- (a * b) % m = ((a % m) * (b % m)) % m")}</pre></details>
+
+<p class="pstep">Layer 2 · The digit-sum congruence <span class="n">— 3 and 9, from 10 ≡ 1</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>For 9 the claim is that a number and its digit sum leave the same remainder — the fact the whole test rests on. We prove it by <strong>induction</strong> on the digit list. The empty list is immediate. For one more digit, place value contributes <code>10 · tail</code>; split that as <code>tail + 9 · tail</code>, and the <code>9 · tail</code> piece is a multiple of 9, so it disappears under the remainder. What is left is the digit plus the tail, and the inductive hypothesis already says the tail agrees with its own digit sum. The divisibility test is then a single rewrite: <code>9 ∣ n</code> means <code>n % 9 = 0</code>, so it holds exactly when the digit sum's remainder is 0. (The test for 3 is identical, since 10 leaves remainder 1 mod 3 too.)</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- toNat a and its digit sum leave the same remainder mod 9 (mod 3 is identical).")}
+${K("theorem")} ${T("toNat_mod9_eq_digitSum_mod9","lem","toNat_mod9_eq_digitSum_mod9 (a)","toNat a % 9 = digitSum a % 9","The heart of the ÷9 test: value and digit sum are congruent mod 9. This is the panel in §3.")} (a : MultiDigit) :
+    toNat a % 9 = digitSum a % 9 := ${K("by")}
+  ${T("induction","tac","induction a","","Structural induction on the digit list: cases a = [] and a = d :: ds.")} a ${K("with")}
+  | nil => simp [toNat, digitSum]
+  | cons d ds ih =>
+      rw [toNat_cons, digitSum_cons]
+      ${C("-- split 10·tail = tail + 9·tail, and 9·tail vanishes mod 9")}
+      have hten : 10 * toNat ds = toNat ds + 9 * toNat ds := ${K("by")} ${T("ring","tac","ring","10·t = t + 9·t","")}
+      rw [hten, show d.val + (toNat ds + 9 * toNat ds) = (d.val + toNat ds) + 9 * toNat ds ${K("by")} ring]
+      have ${T("h9","lem","h9","(9 * toNat ds) % 9 = 0","The 9·tail term is a multiple of 9, so it drops out of the remainder.")} : (9 * toNat ds) % 9 = 0 := ${K("by")} simp
+      rw [Nat.add_mod, h9, Nat.add_zero, Nat.mod_mod, Nat.add_mod d.val (toNat ds), ${T("ih","tac","ih : toNat ds % 9 = digitSum ds % 9","","The tail already agrees; substitute it.")}, ← Nat.add_mod d.val (digitSum ds)]
+
+${K("theorem")} ${T("div_by_9","lem","div_by_9 (a) : 9 ∣ toNat a ↔ 9 ∣ digitSum a","","The test itself — a one-line rewrite through the congruence above.")} (a : MultiDigit) : 9 ∣ toNat a ↔ 9 ∣ digitSum a := ${K("by")}
+  rw [Nat.dvd_iff_mod_eq_zero, Nat.dvd_iff_mod_eq_zero, toNat_mod9_eq_digitSum_mod9]</pre></details>
+
+<p class="pstep">Layer 3 · The alternating-sum congruence <span class="n">— 11, from 10 ≡ −1</span></p>
+<div class="note">On paper you would write <code>value ≡ E − O (mod 11)</code>. Our numbers live in ℕ, where
+   subtraction truncates (<code>5 − 7 = 0</code>), so <code>E − O</code> is not safe to state. Move the
+   <code>O</code> across instead: <code>value + O ≡ E</code> — the same congruence, no subtraction. The same
+   dodge handles <code>10 ≡ −1</code>: there is no −1 in ℕ, so the proof uses <code>10 + 1 = 11 ≡ 0</code>,
+   engineering an <code>11·tail</code> term and dropping it.</div>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The 11 test runs on the same engine as 9, with one twist: 10 is congruent to −1 mod 11, so consecutive places alternate in sign. On paper that gives <code>value ≡ E − O</code>, the even-position sum minus the odd. But there is no subtraction to lean on in ℕ, so we state the subtraction-free equivalent <code>value + O ≡ E (mod 11)</code> and prove that by induction. Each new digit contributes a <code>10 · tail</code> from place value; combined with the <code>tail</code> the hypothesis hands over, that is <code>11 · tail</code> — a multiple of 11, which vanishes. The step-by-step regrouping is written as a <code>calc</code> chain of congruences, each link either the inductive hypothesis or the dropping of that <code>11 · tail</code> term.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Subtraction-free form: toNat a + O ≡ E (mod 11). Each step uses 10 ≡ −1,")}
+${C("-- so 10·tail + tail = 11·tail vanishes mod 11.")}
+${K("theorem")} ${T("toNat_mod11_eq_altSum","lem","toNat_mod11_eq_altSum (a)","(toNat a + (altSums a).2) % 11 = (altSums a).1 % 11","value + O ≡ E (mod 11), carried by Nat.ModEq. The 11·tail term drops out at each step.")} (a : MultiDigit) :
+    (toNat a + (altSums a).2) % 11 = (altSums a).1 % 11 := ${K("by")}
+  induction a ${K("with")}
+  | nil => simp [toNat, altSums]
+  | cons d ds ih =>
+      rw [toNat_cons, altSums_cons]
+      ${C("-- 11·tail is a multiple of 11; the IH, restated as a ModEq, chains inside the calc")}
+      have ${T("h11","lem","h11 : (11 * toNat ds) ≡ 0 [MOD 11]","","A multiple of 11 vanishes in any mod-11 comparison.")} := (Nat.modEq_zero_iff_dvd).mpr ⟨toNat ds, rfl⟩
+      have ${T("ihm","lem","ihm : (altSums ds).1 ≡ (toNat ds + (altSums ds).2) [MOD 11]","","The inductive hypothesis, flipped into ModEq form so it can be substituted mid-calc.")} := ih.symm
+      ${K("exact")} ${K("calc")} (d.val + 10 * toNat ds + (altSums ds).1)
+          ≡ (d.val + 10 * toNat ds + (toNat ds + (altSums ds).2)) [MOD 11] := ${T("Nat.ModEq.add_left","lem","Nat.ModEq.add_left c : a ≡ b [MOD n] → c + a ≡ c + b [MOD n]","","Substitute the tail's odd-sum for its value via the IH — congruences survive adding the same thing on the left.")} _ ihm
+        _ = ((d.val + (altSums ds).2) + 11 * toNat ds) := ${K("by")} ${T("ring","tac","ring","10·t + t = 11·t","Regroup: the 10·tail from place value and the tail supplied by ih merge into 11·tail.")}
+        _ ≡ ((d.val + (altSums ds).2) + 0) [MOD 11] := ${T("Nat.ModEq.add_left","lem","Nat.ModEq.add_left _ h11","","Drop the 11·tail term: it is ≡ 0 (mod 11).")} _ h11
+        _ = (d.val + (altSums ds).2) := ${K("by")} ring</pre></details>
+
+<p class="pstep">Layer 3 (test) · From the congruence to the ÷11 rule <span class="n">— cancel the shared O</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The congruence above says <code>value + O ≡ E (mod 11)</code>. The test wants <code>11 ∣ value</code> exactly when <code>E ≡ O (mod 11)</code>, so we prove the two directions. Going forward, <code>11 ∣ value</code> means <code>value ≡ 0</code>, which leaves <code>O ≡ E</code>. Coming back, assume <code>E ≡ O</code> and substitute into the congruence to get <code>value + O ≡ O</code>; cancelling the shared <code>O</code> from both sides leaves <code>value ≡ 0</code>, i.e. divisible by 11. The single <code>+ O</code> we carried through to avoid subtraction is precisely what cancels here.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("div_by_11","lem","div_by_11 (a) : 11 ∣ toNat a ↔ (altSums a).1 % 11 = (altSums a).2 % 11","","The test: 11 ∣ a iff E ≡ O (mod 11). Both directions cancel the shared O in the congruence above.")} (a : MultiDigit) :
+    11 ∣ toNat a ↔ (altSums a).1 % 11 = (altSums a).2 % 11 := ${K("by")}
+  ${C("-- Reduce 11 ∣ toNat a to toNat a % 11 = 0.")}
+  rw [Nat.dvd_iff_mod_eq_zero]
+  ${C("-- key : (toNat a + O) % 11 = E % 11")}
+  have key := ${T("toNat_mod11_eq_altSum","lem","toNat_mod11_eq_altSum a","","The congruence proved just above: value + O ≡ E (mod 11).")} a
+  constructor
+  · ${K("intro")} hN
+    ${C("-- (→) toNat a ≡ 0, so adding O leaves just O on the left; key turns that into E % 11 = O % 11.")}
+    have h : (toNat a + (altSums a).2) % 11 = (altSums a).2 % 11 := ${K("by")}
+      rw [Nat.add_mod, hN, Nat.zero_add, Nat.mod_mod]
+    rw [key] at h; ${K("exact")} h
+  · ${K("intro")} hEO
+    ${C("-- (←) given E ≡ O, substitute into key to get toNat a + O ≡ O,")}
+    rw [hEO] at key
+    have h : (toNat a + (altSums a).2) ≡ (0 + (altSums a).2) [MOD 11] := ${K("by")}
+      rw [Nat.zero_add]; ${K("exact")} key
+    ${C("-- then cancel the common + O from both sides to recover toNat a ≡ 0.")}
+    have := ${T("Nat.ModEq.add_right_cancel'","lem","Nat.ModEq.add_right_cancel' c : c + a ≡ c + b [MOD n] → a ≡ b [MOD n]","","Cancel the shared O added on the right of both sides, leaving toNat a ≡ 0 (mod 11).")} (altSums a).2 h
+    ${T("simpa","tac","simpa using this","","Simplify 0 % 11 = 0 to finish: toNat a % 11 = 0.")} using this</pre></details>`; }
+
+function mcq(elId,options,correct){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+$("divImpl").innerHTML=divImpl();
+$("proofDiv").innerHTML=buildDivisProof();
+bindTips();
+start();
+
+mcq("keyMCQ",[
+  {text:"10 is even, so the number is too.",why:"That's about ÷2, not ÷3 or ÷9, and evenness isn't what the digit sum captures."},
+  {text:"10 ≡ 1 (mod 9) and (mod 3).",why:"Exactly. Because 10ⁱ ≡ 1 for every i, each digit contributes its plain face value, so the number is congruent to the sum of its digits mod 9 (and mod 3)."},
+  {text:"10 = 2 × 5.",why:"That's the fact behind the ÷2 and ÷5 tests (units digit), not the digit-sum tests."},
+  {text:"9 is odd.",why:"Parity of the modulus is irrelevant; what matters is that 10 ≡ 1 (mod 9)."},
+],1);
+mcq("sevenMCQ",[
+  {text:"Yes — digit sums work for any odd divisor.",why:"They work exactly when 10 ≡ 1: for 3 and 9 only."},
+  {text:"No — 10 % 7 = 3, so each place contributes its digit × 3ⁱ, not its face value.",why:"Right — the digit-sum trick is special to moduli where 10 ≡ 1 (3 and 9). For 7 the place weights cycle 1, 3, 2, 6, 4, 5, …"},
+  {text:"Yes, but you must sum twice.",why:"Repeated summing (casting out) still tracks the digit sum — it stays a mod-3/9 tool."},
+  {text:"No — 7 is prime.",why:"3 is prime too and the test works for it; primality is irrelevant. What matters is 10's remainder."},
+],1);
+mcq("elevenMCQ",[
+  {text:"Because 11 = 10 + 1.",why:"That is exactly why 10 ≡ −1 (mod 11) — but the useful form is the consequence for powers: 10ⁱ ≡ (−1)ⁱ, which makes the signs alternate. The fuller option says so."},
+  {text:"Because 10 ≡ −1 (mod 11), so 10ⁱ ≡ (−1)ⁱ.",why:"Right. Even powers give +1, odd powers −1 — the place values flip sign with each step, which is exactly the even-minus-odd alternating sum."},
+  {text:"Because 11 is prime.",why:"Primality plays no role here; the sign-alternation is a fact about 10 mod 11."},
+  {text:"To make the sum smaller.",why:"It isn't about size; alternation reflects 10ⁱ ≡ (−1)ⁱ."},
+],1);
+mcq("meanMCQ",[
+  {text:"digitSum a = toNat a.",why:"False in general — 19 has digit sum 10. Only the remainders mod 9 match."},
+  {text:"9 always divides digitSum a.",why:"Not always; it does exactly when 9 divides the number, which is what's being tested."},
+  {text:"toNat a % 9 = digitSum a % 9.",why:"Yes — the value and its digit sum are congruent mod 9. That equality of remainders is the real content; the divisibility ↔ is a one-line corollary of it."},
+  {text:"toNat a = 9 × digitSum a.",why:"No such identity holds; the theorem is about equal remainders, not a product."},
+],2);
+mcq("twofiveMCQ",[
+  {text:"Because 2 and 5 are small.",why:"Size isn't the reason; it's that 10 is a multiple of both."},
+  {text:"Because 10 ≡ 0 (mod 2) and (mod 5).",why:"Right. Every place above the units — 10, 100, 1000, … — is a multiple of both 2 and 5, so it contributes 0 to the remainder; only the units digit survives."},
+  {text:"Because the units digit is always the largest.",why:"It isn't; the point is the higher places vanish mod 2 and mod 5."},
+  {text:"Because 2 × 5 = 10.",why:"Right fact, wrong conclusion drawn — what matters is what it does to the higher places: every 10ⁱ (i ≥ 1) is a multiple of both 2 and 5, so only the units digit survives."},
+],1);
+mcq("vanishMCQ",[
+  {text:"It cancels the digit d.",why:"d is untouched; the split isolates the tail's contribution, not the head."},
+  {text:"9 · tail is 0 mod 9, so it drops out.",why:"Exactly. 10·tail = tail + 9·tail; the 9·tail vanishes mod 9, reducing the step to the bare tail, which the inductive hypothesis already handles."},
+  {text:"It makes the number smaller so decide can run.",why:"No decision procedure is involved; it's an algebraic split that kills a multiple of 9."},
+  {text:"It converts × into +.",why:"The rewrite is an identity 10·t = t + 9·t; the point is that 9·t is divisible by 9, not the +/× shape."},
+],1);
+mcq("bridgeMCQ",[
+  {text:"It speeds up the algorithm.",why:"It's a proof-time lemma, not a runtime optimisation."},
+  {text:"It proves myMod terminates.",why:"Termination came with longDiv in Chapter 4; the bridge is about the value, not termination."},
+  {text:"It certifies that our own remainder (from longDiv) equals Lean's %.",why:"Right. The tests are stated on myMod but proved with the standard Nat.add_mod / Nat.mul_mod lemmas; without the bridge, myMod and % would be separate worlds."},
+  {text:"It defines what mod means.",why:"mod is already defined; the bridge relates our computed remainder to it."},
+],2);
+mcq("iffMCQ",[
+  {text:"Nothing — it follows automatically.",why:"It needs proof; the congruence gives both directions at once, but that is a fact, not a formality."},
+  {text:"It speeds up the computation.",why:"Speed is unchanged; it is about what a result licenses you to conclude."},
+  {text:"Certainty in both verdicts: a passing digit sum proves divisibility, a failing one proves non-divisibility.",why:"With only →, a divisible digit sum would tell you nothing about the number; the iff makes the shortcut a complete replacement for the division."},
+  {text:"It handles negative numbers.",why:"Everything here is ℕ; no negatives exist."},
+],2);
+
+/* ==================== notebook worksheet (submit-and-check) ==================== */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"divis_dsum", n:1, kind:"code", title:"Complete digitSum",
+   prompt:`<code>digitSum</code> folds over the digits, adding each one's value to a running total. Fill the fold step — it is one small expression, and §2 shows it, so treat this as a warm-up in reading <code>foldl</code>. (For a real test, try writing the <code>altSums</code> step in your editor.)`,
+   ctx:`<span class="kw">def</span> studentDigitSum (a : MultiDigit) : Nat :=
+  a.foldl (<span class="kw">fun</span> acc d =&gt; <span class="ph">‹ your answer ›</span>) 0`,
+   ph:"add this digit's value to the accumulator…",
+   hints:["The fold carries a running total in <code>acc</code> and visits one digit <code>d</code> at a time. Each step should hand back the new total after folding in this digit.","A digit <code>d</code> is a bundled value; reach its underlying number with the <code>.val</code> projection, then combine it with <code>acc</code> using <code>+</code>."],
+   sol:`acc + d.val`},
+  {ex:"divis_mod", n:2, kind:"compute", title:"Check a remainder",
+   prompt:`<code>1234 mod 9 = 1</code> — its digit sum is 10, and 10 mod 9 = 1. <code>myMod</code> runs the long division, so this needs <code>native_decide</code>.`,
+   ctx:`<span class="kw">example</span> : myMod [⟨4,_⟩,⟨3,_⟩,⟨2,_⟩,⟨1,_⟩] ⟨9,_⟩ = 1 := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:["This is a fully concrete computation — no variables, just fixed digits and a fixed modulus. You only need to make Lean actually run the long division.","<code>myMod</code> is defined by recursion, so ordinary evaluation is heavy; use the tactic that compiles the computation and trusts the result rather than the slower elaborator-only checker.","One word: the compiled-evaluation decision tactic."],
+   sol:`native_decide`},
+  {ex:"divis_alt", n:3, kind:"compute", title:"Even and odd position sums",
+   prompt:`For <code>1234</code>, the even-position digits (from the units) are 4 and 2, the odd-position ones are 3 and 1 — so <code>altSums</code> gives <code>(6, 4)</code>. Decidable, so one tactic settles it.`,
+   ctx:`<span class="kw">example</span> : altSums [⟨4,_⟩,⟨3,_⟩,⟨2,_⟩,⟨1,_⟩] = (6, 4) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:["Both sides are concrete: <code>altSums</code> of a fixed list against a fixed pair. Equality of such closed values is something Lean can settle mechanically.","This one is small enough that you do not need compiled evaluation — the plain decision tactic for decidable propositions suffices here.","A single tactic that decides the decidable equality."],
+   sol:`decide`},
+  {ex:"divis_cite", n:4, kind:"proof", title:"Cite the test",
+   prompt:`The chapter proves the ÷9 rule as <code>div_by_9</code>. Close this goal using that theorem directly.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) : 9 ∣ toNat a ↔ 9 ∣ digitSum a := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"exact …",
+   hints:["The chapter already did the hard work: the ÷9 rule is a proved theorem. Your goal is literally its statement, so you just need to hand that theorem back.","Use the tactic that supplies an exact proof term, applying <code>div_by_9</code> to the multi-digit number <code>a</code>.","The term-supplying tactic, then the named theorem fed the argument <code>a</code>."],
+   sol:`exact div_by_9 a`},
+  {ex:"divis_rw", n:5, kind:"proof", title:"The ÷3 test from its congruence",
+   prompt:`<code>div_by_9</code> was proved by rewriting both divisibilities into mod-equations and substituting the congruence. Do the same for 3: two rewrites of <code>Nat.dvd_iff_mod_eq_zero</code>, then the congruence theorem <code>toNat_mod3_eq_digitSum_mod3</code>.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) : 3 ∣ toNat a ↔ 3 ∣ digitSum a := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"rw [...]",
+   hints:["Mirror how <code>div_by_9</code> was built: first turn each &quot;divisible by 3&quot; on both sides of the iff into a statement about a remainder being zero, so the two mods line up for the congruence to bridge them.","Rewrite with <code>Nat.dvd_iff_mod_eq_zero</code> once for each side, then rewrite with the congruence theorem <code>toNat_mod3_eq_digitSum_mod3</code> to match the two remainders."],
+   sol:`rw [Nat.dvd_iff_mod_eq_zero, Nat.dvd_iff_mod_eq_zero,
+      toNat_mod3_eq_digitSum_mod3]`},
+  {ex:"divis_build", n:6, kind:"proof", title:"Build a short proof — 9 implies 3",
+   prompt:`Connect two tests you've now seen: if a number is divisible by 9, it is divisible by 3. Rewrite each side through its own test, then chain the two divisibilities.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) (h : 9 ∣ toNat a) : 3 ∣ toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your proof — a few steps ›</span>`,
+   ph:"rw both tests, then a transitivity step…",
+   hints:[
+     `Goal and hypothesis are both about <code>toNat a</code>; turn each into a statement about the digit sum — the ÷3 test on the goal, the ÷9 test on <code>h</code> — so they line up.`,
+     `<code>rw [div_by_3]</code> on the goal and <code>rw [div_by_9] at h</code> leave you with <code>3 ∣ digitSum a</code> and <code>9 ∣ digitSum a</code>.`,
+     `Since 3 divides 9, one transitivity step finishes — reach for <code>Nat.dvd_trans</code>, handing it a proof that 3 ∣ 9 and then <code>h</code>.`],
+   sol:`rw [div_by_3]
+  rw [div_by_9] at h
+  exact Nat.dvd_trans (by decide) h`},
+  {ex:"divis_whole", n:7, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`Write the ÷9 test from scratch: a number is divisible by 9 iff its digit sum is. It comes straight from 9's <em>own</em> digit-sum congruence — the same <em>technique</em> as the ÷3 exercise above, but built from <code>toNat_mod9_eq_digitSum_mod9</code>, not derived from the ÷3 result.`,
+   ctx:`<span class="kw">example</span> (a : MultiDigit) : 9 ∣ toNat a ↔ 9 ∣ digitSum a := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"turn both sides into mods, then bridge…",
+   hints:[
+     `Turn each side's &ldquo;divisible by 9&rdquo; into &ldquo;remainder mod 9 is 0&rdquo; so both sides talk about mods; then a single congruence theorem bridges the number's mod to its digit sum's.`,
+     `Rewrite twice with <code>Nat.dvd_iff_mod_eq_zero</code> (once per side), then rewrite with <code>toNat_mod9_eq_digitSum_mod9</code>.`],
+   sol:`rw [Nat.dvd_iff_mod_eq_zero, Nat.dvd_iff_mod_eq_zero, toNat_mod9_eq_digitSum_mod9]`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script src="book.js"></script>
+</body>
+</html>

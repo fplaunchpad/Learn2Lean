@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Vertical Subtraction — described, implemented, visualised, proved</title>
+<meta name="description" content="Vertical subtraction with borrowing, written in Lean 4 and proved correct — including the precondition that makes subtraction meaningful."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>➖</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:6px 0}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:110px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .opSym{color:var(--orange);font-size:18px}
+  .board{display:flex;flex-direction:column;align-items:flex-end;width:max-content;background:#000;border-radius:8px;padding:12px 16px}
+  .row{display:flex;justify-content:flex-end;align-items:center}
+  .gut{width:22px;text-align:center;color:#fff;font-size:18px}
+  .cell{width:36px;height:36px;margin:3px;border-radius:5px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17px;color:#ccc}
+  .cell.act{border-color:var(--yellow);color:var(--yellow)} .cell.future{border-color:#222;color:#555} .cell.blank{border:none}
+  .cell.struck{border-color:var(--orange);position:relative} .cell.struck .o{text-decoration:line-through;color:var(--orange);font-size:17px} .cell.struck .rv{position:absolute;top:-1px;right:2px;font-size:10px;color:var(--yellow)}
+  .cell.took{border-color:var(--yellow);color:var(--yellow);position:relative} .cell.took .p10{position:absolute;top:-1px;left:1px;font-size:8px;color:var(--cyan)}
+  .car{width:36px;height:15px;margin:3px;text-align:center;font-size:11px;color:var(--yellow)}
+  .hr{height:0;border:0;border-top:2px solid #fff;margin:6px 0;width:100%}
+  .nav{display:flex;align-items:center;gap:12px;margin-top:12px;color:var(--muted);font-size:14px}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:16px}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:15px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:430px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .recall{background:#15110a;border-left:3px solid var(--orange);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#ecdcc7;border-radius:0 6px 6px 0}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .reveal{display:none;margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .small{font-size:13px;color:var(--muted)}
+  .worked{display:grid;grid-template-columns:auto 22px repeat(3,32px);align-items:center;width:max-content;background:#000;border:1px solid var(--line);border-radius:10px;padding:14px 22px 16px;margin:16px auto;font-size:23px;font-variant-numeric:tabular-nums}
+  ul.steps{font-size:13px;color:var(--muted);margin:10px 0;padding-left:20px}
+  ul.steps li{margin:4px 0}
+  .worked span{text-align:center}
+  .worked .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding-right:14px}
+  .worked .c{color:var(--yellow);font-size:13px;line-height:15px;height:15px}
+  .worked .p10{color:var(--cyan);font-size:12px;line-height:15px;height:15px}
+  .worked .op{color:var(--orange)} .worked .s{color:var(--green);font-weight:600}
+  .worked .struck{color:#777;text-decoration:line-through;text-decoration-color:var(--orange);text-decoration-thickness:2px}
+  .worked .rule{grid-column:2 / -1;height:0;border-top:2px solid #fff;margin:6px 0}
+  textarea.led{width:100%;min-height:54px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin-top:10px;font-size:13.5px;color:#cfe7ec;max-width:520px}
+  .stepdetail b{color:var(--yellow)}
+  pre.lean .ph{color:var(--yellow)}
+  /* ---- notebook worksheet ---- */
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a> · <a href="prologue.html">Ch 0</a> · <a href="addition.html">Ch 1</a></p>
+  <h1>Vertical Subtraction</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <div class="recall">This chapter builds directly on <a href="addition.html">Vertical Addition</a>. Subtraction has the
+     same column-by-column shape, the same three-layer structure, and a proof with the same backbone. Rather than
+     repeat all of it, we lean on addition throughout and concentrate on the one thing subtraction adds. If carries,
+     the layered design, or the induction there are not yet comfortable, read that chapter first.</div>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the algorithm does</h2>
+  <p>Subtraction has the same column-by-column shape as addition, but in place of a carry it uses a <strong>borrow</strong>.
+     You line the two numbers up by their right edge and subtract column by column from the units. When the top digit
+     in a column is too small, ten is taken from the column to its left before subtracting, and that column is then
+     short by one. The borrow is the only thing that passes between columns. It's the carry's mirror image.</p>
+  <p>Addition had nothing like this next part. Subtraction is defined only when the top number is at least the bottom
+     one; otherwise the true result is negative, which a list of digits cannot represent. That is a real
+     <em>precondition</em>, and the whole proof turns on it.</p>
+  <p>Take <code>452 − 27</code>. Working from the units, when a column can't subtract you take ten from the column to
+     its left: that column's digit is <span style="color:var(--orange)">crossed out and rewritten one smaller</span>,
+     and the borrowing column gains <span style="color:var(--cyan)">+10</span>.</p>
+  <div class="worked" role="img" aria-label="452 minus 27 equals 425, worked with one borrow from the tens into the units">
+    <span class="lbl">borrow</span><span></span><span class="c"></span><span class="c">4</span><span class="p10">+10</span>
+    <span class="lbl"></span><span></span><span>4</span><span class="struck">5</span><span>2</span>
+    <span class="lbl"></span><span class="op">−</span><span></span><span>2</span><span>7</span>
+    <span class="rule"></span>
+    <span class="lbl"></span><span></span><span class="s">4</span><span class="s">2</span><span class="s">5</span>
+  </div>
+  <ul class="steps">
+    <li>Units: 2 can't take 7, so borrow — the tens 5 becomes <span style="color:var(--yellow)">4</span> and the units become 12; 12 − 7 = <span style="color:var(--green)">5</span>.</li>
+    <li>Tens: 4 − 2 = <span style="color:var(--green)">2</span>. &nbsp; Hundreds: 4 − 0 = <span style="color:var(--green)">4</span>.</li>
+    <li>Answer <span style="color:var(--green)">425</span>, and 425 + 27 = 452: last chapter's addition run backwards.</li>
+  </ul>
+  <div class="note"><b>Why it's built this way.</b> Two modelling choices, both to stay faithful to the paper method. We
+     subtract column by column with a <em>borrow</em> — the mirror of addition's carry — rather than leaning on some
+     built-in operation. And hand subtraction only makes sense when the top is at least the bottom; below that there is
+     no schoolbook answer. So the algorithm carries that as an explicit <em>precondition</em> (returning an empty list
+     as a sentinel if it is ever broken), instead of silently truncating to zero the way Lean's <code>Nat</code>
+     subtraction does. Keeping the precondition honest is what lets the theorem mean what we want — see
+     <a href="prologue.html#repr">the prologue's note</a>.</div>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>Subtraction is built in the same three layers as addition, each proved correct before the next is placed on top,
+     with a borrow wherever addition had a carry.</p>
+  <div id="subAlgo"></div>
+  <div class="note">The second case — top exhausted, bottom still has digits — is reached either when the precondition
+     is broken, or when the bottom's remaining digits are all zeros (think <code>5 − 05</code>), in which case
+     <code>[]</code> (value 0) is exactly the right answer. The theorem's hypothesis keeps the branch honest: it
+     forces the remaining bottom value to 0. Termination, exactly as for addition, follows from the combined list
+     length decreasing at each call.</div>
+
+  <!-- 3. VISUALIZATION -->
+  <h2>3 · See it run — the invariant</h2>
+  <p>Step through a column at a time, the way you would borrow on paper: when a column can't subtract, it takes ten
+     from its left neighbour — that neighbour's digit is <span style="color:var(--orange)">crossed out and dropped by
+     one</span>, and the borrowing column is marked <span style="color:var(--cyan)">+10</span>. On paper you edit the
+     neighbour's digit; the code never edits — it hands the next column a borrow flag, and subtracting that 1 there
+     is the same act. When the neighbour is 0 the strike chains: 0 becomes 9 and the borrow moves one more column
+     left (try 100 − 1 below). The panel states
+     subtraction's invariant; entering a top number smaller than the bottom brings the precondition into play.</p>
+  <div class="stage">
+    <div class="controls">
+      <input class="num" id="opA" value="714"/><span class="opSym">−</span><input class="num" id="opB" value="93"/>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="srow">
+      <div class="board" id="board"></div>
+      <div class="ipanel" id="ipanel"></div>
+    </div>
+    <div class="stepdetail" id="detail"></div>
+  </div>
+  <p>After the lowest <em>k</em> columns, the top digits read so far, plus any borrow still owed at its place value
+     <code>10ᵏ</code>, equal the result digits plus the bottom digits read so far:</p>
+  <p style="text-align:center;color:var(--yellow)">aₖ + borrow × 10ᵏ = resultₖ + bₖ.</p>
+  <p>This is the <strong>invariant</strong>, the borrow-shaped counterpart of addition's. Each column re-establishes
+     it. At the end no digits and no borrow remain, and <em>provided the borrow never escaped past the top
+     number</em>, it collapses to exactly <code>a − b = result</code>. That proviso is the precondition again.</p>
+  <p>One caution before §5: there the borrow will change sides. In the panel the borrow sits with <em>a</em>, because
+     the columns already read have taken ten from the ones still to come; the theorem views the same debt from the
+     other side — an incoming borrow the remaining columns must pay, so it joins <code>output + b</code>. Two views
+     of one ledger.</p>
+
+  <h3>Predict one column</h3>
+  <p>One column of <code>subDigits</code> takes two digits and an incoming borrow, and returns a difference digit and
+     a borrow-out. With a borrow coming in, what does <code>subDigits 5 5 true</code> return?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="predMCQ"></div></div>
+
+  <!-- 4. INTUITION CHECK -->
+  <h2>4 · Before the proof — think like a verifier</h2>
+  <p>You have read one of these proofs already, back in the addition chapter, so this time see how much of it you
+     can anticipate <em>before</em> reading it. A verification mindset is less about Lean syntax than about a few
+     habits: pin down <em>for which inputs</em> the claim is even meant to hold, account for <em>every</em> branch the
+     code can take (including the ones that look wrong), and check that each assumption you rely on still holds the
+     next time around. The questions below are those habits, applied to subtraction.</p>
+
+  <h3>What must the theorem assume?</h3>
+  <p>Addition's theorem held for <em>all</em> inputs. Subtraction by hand can fail — try <code>3 − 7</code> with
+     whole numbers. So what has to appear in <code>verticalSub_correct</code> that addition's statement never needed?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="preMCQ"></div></div>
+
+  <h3>The branch that looks wrong</h3>
+  <p>The <code>[], _ :: _</code> case returns <code>[]</code> — on its face a wrong difference. If the algorithm can
+     reach that branch, how can the theorem still be true?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="undefMCQ"></div></div>
+
+  <h3>What the recursion costs you</h3>
+  <p>The proof is an induction: it assumes the algorithm is correct on the shorter tails, then handles one more
+     column. But the inductive hypothesis only applies <em>when its own precondition holds</em>. What extra work does
+     that force at each step?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="recurMCQ"></div></div>
+
+  <!-- 5. PROOF -->
+  <h2>5 · The proof</h2>
+  <p>Same shape as the algorithm, and told the same way as addition's proof. First <strong>the argument</strong> in
+     plain words: read just these and you'll understand why the algorithm is correct. Then, folded underneath,
+     <strong>the full Lean proof</strong>, for anyone who wants the machine-checked details — you can follow the whole
+     section without opening a single dropdown.</p>
+  <p>The single-column facts are settled case by case; <code>verticalSub_correct</code> is then proved by induction.
+     What sets it apart from addition is the point the questions above were circling: the precondition
+     <code>b ≤ a</code> has to be re-earned before each recursive call — that is the whole job of the small
+     <code>hpre</code> sub-proofs. Notice <code>h</code> is slightly stronger than §4's answer: the owed borrow joins
+     the bottom side, deliberately, because each recursive call passes a new borrow inward, so the inequality the
+     induction maintains must mention it. That is what keeps the borrow from ever asking a column to subtract more
+     than it holds, and it is why the empty-list "undefined" branch can be discharged rather than feared. A short
+     corollary, <code>verticalSub_correct'</code>, then drops the borrow for the everyday no-borrow case.</p>
+  <p class="small">In the Lean, goal states in the tooltips are lightly abbreviated — · for *, and b' names this
+     column's borrow-out — the shapes are what matter.</p>
+  <div id="proofSub"></div>
+
+  <!-- 6. POST-PROOF COMPREHENSION -->
+  <h2>6 · Did the proof land?</h2>
+  <p>A few questions about the pieces that make the proof work, plus one design choice in the definition it leans
+     on. These are no longer predictions. They ask whether the moving parts are clear now that you have read it.</p>
+
+  <h3>Why keep the borrow general?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="genMCQ"></div></div>
+
+  <h3>What <code>subDigits_correct</code> does inside the induction</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="colMCQ"></div></div>
+
+  <h3>Where does the proof of <code>hpre</code> get its ammunition?</h3>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="hpreMCQ"></div></div>
+
+  <h3>The theorem has no minus sign</h3>
+  <p>The statement reads <code>output + b + borrow = a</code>. Why avoid stating <code>output = a − b</code>?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="minusMCQ"></div></div>
+
+  <h3>The shape of the proof</h3>
+  <p>The proof inducts on <code>a</code>, and again on <code>b</code> inside each case. Why this nested, two-list
+     structure?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="structMCQ"></div></div>
+
+  <h3>The impossible-digit case in <code>subTable</code></h3>
+  <p>The table ends with <code>| ⟨n+10, h⟩, _ =&gt; absurd h (by omega)</code>. Why is that line there at all?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="exhaustMCQ"></div></div>
+
+  <h3>Back to addition: the both-empty base case</h3>
+  <p>Addition's first base case was <code>| [], [], true =&gt; [⟨1, …⟩]</code>, but subtraction's is
+     <code>| [], [], true =&gt; []</code>. Both lists are empty with a leftover bit — why does addition produce a
+     digit while subtraction produces nothing?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="backrefMCQ"></div></div>
+
+  <!-- 7. EXERCISES -->
+  <h2>7 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill. Press <b>Run</b> and your code is
+     compiled by Lean on the server. <b>Run all</b> checks every cell in turn, <b>Reset all</b> restores the blank
+     cells, and every cell hides a <em>reference solution</em> you can reveal once you've tried.
+     In the listings digit literals are written <code>0</code>, <code>1</code> for readability; the server spells
+     them <code>⟨0, by omega⟩</code> — either compiles.
+     <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>. The first run is
+     slow: Lean is cold-loading Mathlib.)</span></p>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proof is exactly the one in §5 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run it in VS Code.</p>
+
+  <div class="pager">
+    <a href="addition.html">← Vertical Addition</a>
+    <a href="cover.html">Contents</a>
+    <a href="multiplication.html">Long Multiplication →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+const digitAt=(s,c)=>{const i=s.length-1-c;return i>=0?+s[i]:0;};
+function computeSub(a,b){const N=Math.max(a.length,b.length);
+  let i=a.length-1,j=b.length-1,borrow=0,c=0;const result=[],borrowInto=[];
+  while(c<N){borrowInto[c]=borrow;let d=(i>=0?+a[i]:0)-(j>=0?+b[j]:0)-borrow;if(d<0){d+=10;borrow=1;}else borrow=0;result[c]=d;i--;j--;c++;}
+  return{N,result,borrowInto};}
+const pref=(s,k)=>{const t=s.slice(-k);return BigInt(t===""?"0":t);};
+const sup=k=>(""+k).split("").map(d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[+d]).join("");
+
+const S={a:"714",b:"93",d:null,step:0,ok:true,msg:""};
+function render(){
+  if(!S.ok){
+    $("board").innerHTML=`<div style="color:var(--red);max-width:320px;padding:8px">${S.msg}</div>`;
+    $("ipanel").innerHTML=`<div class="ino">${S.msg}</div>`;
+    $("detail").innerHTML="";$("lbl").textContent="—";$("prev").disabled=true;$("next").disabled=true;return;
+  }
+  const d=S.d,N=d.N;let h="";
+  h+='<div class="row"><div class="gut"></div>';
+  for(let c=N-1;c>=0;c--){
+    if(c>=S.a.length){h+='<div class="cell blank"></div>';continue;}
+    const dig=digitAt(S.a,c),bIn=d.borrowInto[c]||0,bOut=d.borrowInto[c+1]||0;
+    if(c<=S.step&&bOut){h+=`<div class="cell took">${dig}<span class="p10">+10</span></div>`;}
+    else if(c<=S.step+1&&bIn){const rv=dig===0?9:dig-1;h+=`<div class="cell struck"><span class="o">${dig}</span><span class="rv">${rv}</span></div>`;}
+    else{const cl=c===S.step?"act":(c>S.step?"future":"");h+=`<div class="cell ${cl}">${dig}</div>`;}
+  }
+  h+='</div>';
+  h+='<div class="row"><div class="gut opSym">−</div>';for(let c=N-1;c>=0;c--){const w=c<S.b.length,cl=c===S.step?"act":(c>S.step?"future":"");h+=`<div class="cell ${w?cl:'blank'}">${w?digitAt(S.b,c):""}</div>`;}h+='</div><div class="hr"></div>';
+  h+='<div class="row"><div class="gut"></div>';for(let c=N-1;c>=0;c--){let t,cl;if(c<=S.step){t=d.result[c];cl=c===S.step?"act":"";}else{t="?";cl="future";}h+=`<div class="cell ${cl}">${t}</div>`;}h+='</div>';
+  $("board").innerHTML=h;
+  const k=S.step+1,rStr=d.result.slice(0,k).reverse().join("");
+  const pa=pref(S.a,k),pb=pref(S.b,k),pr=pref(rStr,k),borrow=BigInt(d.borrowInto[k]||0),pv=10n**BigInt(k);
+  const L=pa+borrow*pv,R=pr+pb;
+  $("ipanel").innerHTML=
+    `<div class="ititle">Invariant — after ${k} column${k>1?"s":""}</div>`+
+    `<div class="igen">a + borrow × 10${sup(k)} &nbsp;=&nbsp; result + b &nbsp;&nbsp;(lowest ${k} digit${k>1?"s":""})</div>`+
+    `<div class="ieq">${pa} + ${borrow} × ${pv} = ${pr} + ${pb}</div>`+
+    `<div class="ieq">${L} = ${R}</div>`+
+    (L===R?`<div class="iok">✓ holds</div>`:`<div class="ino">✗ violated</div>`);
+  const aD=S.step<S.a.length?digitAt(S.a,S.step):0,bD=S.step<S.b.length?digitAt(S.b,S.step):0,bi=d.borrowInto[S.step]||0,bo=d.borrowInto[S.step+1]||0;
+  $("detail").innerHTML=`Column ${S.step+1}: ${aD}${bi?` − borrow ${bi}`:""} − ${bD} → write <b>${d.result[S.step]}</b>${bo?`, borrow 1 from the next column`:""}.`;
+  $("lbl").textContent=`column ${S.step+1} of ${N}`;$("prev").disabled=S.step<=0;$("next").disabled=S.step>=N-1;
+}
+function start(){
+  S.a=clean($("opA").value);S.b=clean($("opB").value);
+  if(BigInt(S.a)<BigInt(S.b)){S.ok=false;S.msg="Subtraction is defined only when the top number is at least the bottom (a ≥ b). Enter a ≥ b to step through it.";S.d=null;S.step=0;render();return;}
+  S.ok=true;S.msg="";S.d=computeSub(S.a,S.b);S.step=0;render();
+}
+$("go").onclick=start;$("prev").onclick=()=>{if(S.ok&&S.step>0){S.step--;render();}};$("next").onclick=()=>{if(S.ok&&S.step<S.d.N-1){S.step++;render();}};
+[$("opA"),$("opB")].forEach(e=>e.addEventListener("keydown",ev=>{if(ev.key==="Enter")start();}));
+
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+function subAlgo(){ return `<p class="pstep">Layer 1 · The single-digit table <span class="n">— the mirror of addTable</span></p>
+<p><code>subTable</code> gives every single-digit subtraction from 0 to 9, returning the difference digit and whether it had to borrow.</p>
+<pre class="lean">${K("def")} ${T("subTable","lem","subTable : Digit → Digit → Digit × Bool","","The single-digit subtraction table; each pair of digits maps to a difference digit and a borrow.")} : Digit → Digit → Digit × Bool
+  | ⟨7,_⟩, ⟨3,_⟩ => (4, false)          ${C("-- 7 − 3 = 4, no borrow")}
+  | ⟨3,_⟩, ⟨7,_⟩ => (6, true)           ${C("-- 3 − 7 borrows: 13 − 7 = 6")}
+  | ⟨5,_⟩, ⟨5,_⟩ => (0, false)          ${C("-- equal digits, no borrow")}
+  | ...                                 ${C("-- all 100 digit pairs")}</pre>
+<p class="pstep">Layer 2 · One column <span class="n">— two digits and an incoming borrow</span></p>
+<p><code>subDigits</code> handles one column with at most two table lookups, returning the difference and a borrow-out. As with <code>addDigits</code>, taking a borrow in and giving one out is what lets the single-column subtractors chain together.</p>
+<pre class="lean">${K("def")} ${T("subDigits","lem","subDigits (a b : Digit) (borrow : Bool) : Digit × Bool","","Subtracts two digits and an incoming borrow, returning the difference digit and the borrow-out.")} (a b : Digit) (borrow : Bool) : Digit × Bool :=
+  ${K("let")} (diff, b1) := ${T("subTable","lem","subTable : Digit → Digit → Digit × Bool","","The single-digit subtraction table; each pair of digits maps to a difference digit and a borrow.")} a b
+  ${K("match")} borrow ${K("with")}
+  | false => (diff, b1)
+  | true  => ${K("let")} (diff', b2) := subTable diff 1
+             (diff', b1 || b2)</pre>
+<p class="pstep">Layer 3 · Whole numbers <span class="n">— pass the borrow inward; requires b ≤ a</span></p>
+<p><code>verticalSub</code> walks both digit lists, passing the borrow inward. If the top number runs out while the bottom still has digits, it returns the empty list — a sentinel whose meaning the note below unpacks.</p>
+<pre class="lean">${K("def")} ${T("verticalSub","lem","verticalSub : MultiDigit → MultiDigit → Bool → MultiDigit","","Column-wise subtraction with a running borrow; returns [] when the top runs out first — an undefined-sentinel if the precondition is broken, and the honest value 0 otherwise.")} : MultiDigit → MultiDigit → Bool → MultiDigit
+  | [],      [],      false  => []       ${C("-- finished")}
+  | [],      [],      true   => []       ${C("-- leftover borrow: b &gt; a — precondition violated; [] is the undefined sentinel")}
+  | [],      _ :: _,  _      => []       ${C("-- top exhausted, bottom remains — see note below")}
+  | a :: as, [],      borrow => ${K("let")} (d, b') := subDigits a 0 borrow;  d :: verticalSub as [] b'
+  | a :: as, b :: bs, borrow => ${K("let")} (d, b') := subDigits a b borrow;  d :: verticalSub as bs b'</pre>`; }
+
+function buildSubProof(){
+  return `<p class="pstep">Layer 1 · The single-digit table <span class="n">— all 100 differences, checked one by one</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Subtracting one digit from another has only a hundred cases, so Lean simply checks them all by computation. For each pair the table stores a difference digit and a borrow bit, and the two must read back correctly: the difference plus the bottom digit has to recover the top digit — topped up by 10 exactly when the column had to borrow. When 3 − 7 borrows, the entry stores (6, borrow), and 6 + 7 = 3 + 10. Finitely many cases means brute force is a real proof.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Every entry records the right (difference, borrow): read back, diff + b = a + 10·borrow.")}
+${K("theorem")} ${T("subTable_correct","lem","subTable_correct (a b : Digit) :\n  (subTable a b).1.val + b.val  =  a.val + 10·carryVal (subTable a b).2","The difference digit plus b recovers a — unless the column had to borrow, in which case a was topped up by 10, recorded in the borrow bit.")} (a b : Digit) :
+    (subTable a b).1.val + b.val = a.val + 10 * carryVal (subTable a b).2 := ${K("by")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b","100 fully concrete goals, e.g.\n⊢ (subTable ⟨3⟩ ⟨7⟩).1.val + 7 = 3 + 10·carryVal (subTable ⟨3⟩ ⟨7⟩).2","Replaces a by each of 0…9, then b likewise — 100 goals with no variables left.")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("simp","tac","simp [subTable, carryVal]","each concrete goal, e.g.  6 + 7 = 3 + 10·1  →  13 = 13","Unfolds the one entry the digits name and evaluates; the numeric identity closes.")} [subTable, carryVal]</pre></details>
+  <p class="pstep">Layer 2 · One borrow-aware column <span class="n">— 200 cases: each digit pair, with borrow-in 0 and 1</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>One column subtracts two digits, allowing for a borrow that arrived from the column to the right. We want the same guarantee a level up: read the column's (difference, borrow-out) back and it should equal the top digit — again topped up by 10 when it borrows out. Still finite: a hundred digit pairs times the two borrow-in values, two hundred cases, all checked mechanically. The only new ingredient is that each case leans on Layer 1's fact about the table.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- One column: a − b with an incoming borrow.  a + 10·(borrow-out) = diff + b + borrow-in.")}
+${K("theorem")} ${T("subDigits_correct","lem","subDigits_correct (a b : Digit) (borrow : Bool) :\n  a.val + 10·carryVal (…).2  =  (subDigits a b borrow).1.val + b.val + carryVal borrow","The mirror of addDigits_correct: a, topped up by 10 when the column borrows out, equals the difference digit plus b plus the incoming borrow.")} (a b : Digit) (borrow : Bool) :
+    a.val + 10 * carryVal (subDigits a b borrow).2
+      = (subDigits a b borrow).1.val + b.val + carryVal borrow := ${K("by")}
+  ${T("fin_cases","tac","fin_cases a <;> fin_cases b","100 concrete digit pairs","Enumerate both digits.")} a &lt;;&gt; fin_cases b &lt;;&gt; ${T("cases","tac","cases borrow","doubles each goal into borrow = false / true — 200 in all","Two borrow-in values.")} borrow &lt;;&gt;
+  ${T("simp_all","tac","simp_all [subDigits, subTable, carryVal]","every one of the 200 goals reduces to a true equation","Runs subDigits (its at-most-two table lookups) and simplifies hypotheses and goal together until each closes.")} [subDigits, subTable, carryVal]</pre></details>
+  <p class="pstep">Layer 3a · Setup and the base cases <span class="n">— stating it in ℕ, and the two empty-list ends</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>A number has any number of digits, so we cannot list the cases — we argue by <strong>induction</strong> on the top number, generalising the bottom number and the borrow so the hypothesis survives whatever borrow each column hands the next. The statement is phrased addition-style — output <em>plus</em> b <em>plus</em> borrow equals a — so nothing ever leaves ℕ, and it carries the precondition <code>h</code> that addition never needed. The empty ends are the base cases: both lists empty is 0 = 0 (a leftover borrow is ruled out by <code>h</code>), and the "top exhausted, bottom left over" branch returns <code>[]</code> — worth 0 — which <code>h</code> caps at exactly 0, so the branch that looked wrong is discharged rather than feared.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- Subtraction-free invariant: output + b + borrow = a, so everything stays in ℕ. The")}
+${C("-- precondition h says b (plus any owed borrow) never exceeds a — the one thing addition lacked.")}
+${K("theorem")} ${T("verticalSub_correct","lem","verticalSub_correct (a b : MultiDigit) (borrow : Bool)\n    (h : toNat b + carryVal borrow ≤ toNat a) :\n  toNat (verticalSub a b borrow) + toNat b + carryVal borrow = toNat a","Stated addition-style so it stays in ℕ: the output, added back to b and the borrow, recovers a — provided h holds.")} (a b : MultiDigit) (borrow : Bool)
+    (${T("h","lem","h : toNat b + carryVal borrow ≤ toNat a","The precondition: bottom + any owed borrow ≤ top. Subtraction is only defined here, and this is the fact the whole proof must keep alive from one column to the next.")} : toNat b + carryVal borrow ≤ toNat a) :
+    toNat (verticalSub a b borrow) + toNat b + carryVal borrow = toNat a := ${K("by")}
+  ${C("-- Induct on the top number a; generalise b and borrow so the hypothesis survives the")}
+  ${C("-- different borrow each column hands to the next.")}
+  ${T("induction","tac","induction a generalizing b borrow","two goals:   a = []   and   a = a :: as","Induction on a. Generalising b and borrow strengthens the hypothesis to cover the new borrow each column passes inward — exactly as in addition.")} a generalizing b borrow ${K("with")}
+  | nil =>
+      ${C("-- a is empty; induct on b too.")}
+      ${T("induction","tac","induction b generalizing borrow","sub-cases   b = []   and   b = b :: bs","With a empty, the length is carried by b, so induct on it as well.")} b generalizing borrow ${K("with")}
+      | nil =>
+          ${C("-- both empty. Reduce toNat [] to 0 everywhere — crucially, inside h as well.")}
+          ${T("simp only","tac","simp only [toNat, carryVal] at *","⊢ (value of verticalSub [] [] borrow) + 0 + carryVal borrow = 0\nh:  carryVal borrow ≤ 0","'at *' rewrites the hypothesis h too — though carryVal borrow cannot reduce further until borrow is split.")} [toNat, carryVal] at *
+          ${C("-- borrow = false is the real base (0 = 0); borrow = true is ruled out by h.")}
+          ${T("cases","tac","cases borrow","splits borrow into false and true","Only now can carryVal reduce: for borrow = true, h becomes 1 ≤ 0, which is false.")} borrow &lt;;&gt; ${T("simp_all","tac","simp_all [verticalSub]","false → verticalSub [] [] false = [],  0 = 0 ✓\ntrue → h is 1 ≤ 0, impossible → branch vacuous","verticalSub [] [] _ = [], so the value is 0; false closes directly, and true closes from its false hypothesis.")} [verticalSub]
+      | cons b bs ihb =>
+          ${C("-- a = [], b = b :: bs: the 'undefined' branch — verticalSub returns [], value 0.")}
+          ${C("-- h caps that value at 0, so [] — worth 0 — is exactly right; omega turns ≤ 0 into = 0.")}
+          ${T("simp only","tac","simp only [verticalSub, toNat, carryVal] at *","⊢ (b.val + 10·toNat bs) + carryVal borrow = 0\nh:  (b.val + 10·toNat bs) + carryVal borrow ≤ 0","verticalSub [] (b::bs) _ = [], value 0. Goal and h now name the SAME quantity, and h caps it at 0.")} [verticalSub, toNat, carryVal] at *
+          ${T("cases","tac","cases borrow","the two borrow values","")} borrow ${K("with")}
+          | false => ${T("simp only","tac","simp only [] at *","","Essentially a no-op kept faithful to the source — omega does the real closing here.")} [] at * ; ${T("omega","tac","omega","from h the quantity is ≤ 0, hence = 0 — exactly the goal","h pins the left side to 0, which is what the goal asks; omega derives the equality.")}
+          | true  => simp only [] at * ; omega</pre></details>
+  <p class="pstep">Layer 3b · The recursive column <span class="n">— re-earning the precondition, then firing the IH</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>This is the heart of the chapter. Peel off one column: Layer 2 says it is computed correctly, and the inductive hypothesis says the rest of the number is correct — but the hypothesis only applies <em>when its own precondition holds</em>. So before firing it we must re-earn "bottom ≤ top" on the shorter tails, at the new borrow this column passes inward; that is the small <code>hpre</code> block. From the incoming inequality <code>h</code> and this column's fact, the tail plus the new borrow still fits under the shrunken top — so the recursion meets its own precondition, the IH fires, and <code>omega</code> glues the column to the tail. Notice <code>hpre</code> never uses the IH; it is pure arithmetic about the borrow.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">  | cons a as iha =>
+      ${C("-- a = a :: as: induct on b. Both branches share the same five moves.")}
+      induction b ${K("with")}
+      | nil =>
+          ${C("-- b = []: this column computes a − 0 with the borrow, then recurses on the tail as.")}
+          ${T("simp only","tac","simp only [verticalSub, toNat]","⊢ (subDigits a 0 borrow).1.val + 10·toNat (verticalSub as [] b')\n     + 0 + carryVal borrow  =  a.val + 10·toNat as","Unfold one step: the difference digit for this column and the recursive call on as (b' = the borrow-out).")} [verticalSub, toNat]
+          ${C("-- the single-column fact (Layer 2) for a − 0 with this borrow:")}
+          have ${T("hcorrect","lem","hcorrect : a.val + 10·carryVal (subDigits a 0 borrow).2\n         = (subDigits a 0 borrow).1.val + 0 + carryVal borrow","subDigits_correct instantiated at a, ⟨0⟩, borrow — this column is computed correctly.")} := subDigits_correct a ⟨0, by omega⟩ borrow
+          ${C("-- ⟪ the step subtraction adds over addition ⟫  re-earn the precondition on the SHORTER")}
+          ${C("-- lists, so the inductive hypothesis is allowed to fire. This little block is the whole point.")}
+          have ${T("hpre","lem","hpre : toNat [] + carryVal (subDigits a 0 borrow).2 ≤ toNat as","The borrow this column passes inward must still satisfy 'bottom ≤ top' on the tails. The IH below takes this as an argument — it cannot be used until this is proved.")} : toNat [] + carryVal (subDigits a ⟨0, by omega⟩ borrow).2 ≤ toNat as := ${K("by")}
+            ${T("simp","tac","simp [toNat, carryVal] at h ⊢","h:  carryVal borrow ≤ a.val + 10·toNat as\n⊢  carryVal (subDigits a 0 borrow).2 ≤ toNat as","Unfold toNat/carryVal in both the incoming precondition h and the goal, turning them into plain arithmetic about a, as, and the borrows.")} [toNat, carryVal] at h ⊢
+            ${T("have","tac","have := subDigits_correct a 0 borrow","this : a.val + 10·carryVal (…).2 = (…).1.val + 0 + carryVal borrow","Pull the single-column fact into scope; it links a, the difference digit, and the borrow-out.")} := subDigits_correct a ⟨0, by omega⟩ borrow
+            ${T("simp","tac","simp [carryVal] at this","'this', in plain numbers","Evaluate carryVal so the column fact is pure arithmetic omega can read.")} [carryVal] at this
+            ${T("omega","tac","omega","⊢ carryVal (subDigits a 0 borrow).2 ≤ toNat as","From h and the column fact: the borrow-OUT is small enough that the tail as still dominates — so 'bottom ≤ top' survives on the shorter lists. Without this, the IH would be inapplicable and the proof would not close.")}
+          ${C("-- with hpre proved, the tail is already correct (outer IH):")}
+          have hih := ${T("iha","tac","iha [] (subDigits a 0 borrow).2 hpre","hih : toNat (verticalSub as [] b') + toNat [] + carryVal b' = toNat as","Outer IH on as at the borrow-out b'. It TAKES hpre as its last argument — the induction is unusable until the precondition is re-earned.")} [] (subDigits a ⟨0, by omega⟩ borrow).2 hpre
+          ${T("simp","tac","simp [carryVal, toNat] at *","hcorrect, hih and the goal all become plain Nat arithmetic","'at *' so omega can consume the two hypotheses.")} [carryVal, toNat] at * ; ${T("omega","tac","omega","this column (hcorrect) + the tail (hih) ⇒ output + b + borrow = a","Linear place-value bookkeeping combining the column and the tail.")}
+      | cons b bs ${T("_","lem","_ : the inner induction's own hypothesis, discarded","","The inner induction's own hypothesis is never needed — only the outer iha (on a's tail) drives the recursion, because verticalSub shortens both lists together; the inner induction is only here to split b's shape.")} =>
+          ${C("-- the general column: both lists have a digit — a − b with the borrow, then recurse on both tails.")}
+          ${T("simp only","tac","simp only [verticalSub, toNat]","⊢ (subDigits a b borrow).1.val + 10·toNat (verticalSub as bs b')\n     + (b.val + 10·toNat bs) + carryVal borrow  =  a.val + 10·toNat as","Peels off this column's difference digit and the recursive call on the tails as, bs.")} [verticalSub, toNat]
+          have ${T("hcorrect","lem","hcorrect : a.val + 10·carryVal (…).2 = (subDigits a b borrow).1.val + b.val + carryVal borrow","subDigits_correct at the current digits a, b and borrow.")} := ${T("subDigits_correct","lem","subDigits_correct a b borrow","the single-column fact for the current digits","Layer 2, instantiated here.")} a b borrow
+          ${C("-- re-earn the precondition on the tails, by the same four lines as the b = [] case:")}
+          have hpre : toNat bs + carryVal (subDigits a b borrow).2 ≤ toNat as := ${K("by")}
+            ${T("simp","tac","simp [toNat, carryVal] at h ⊢","h:  b.val + 10·toNat bs + carryVal borrow ≤ a.val + 10·toNat as\n⊢  toNat bs + carryVal (…).2 ≤ toNat as","Unfold h and the goal into arithmetic about the two numbers and the borrows.")} [toNat, carryVal] at h ⊢
+            have := subDigits_correct a b borrow
+            simp [carryVal] at this
+            ${T("omega","tac","omega","⊢ toNat bs + carryVal (subDigits a b borrow).2 ≤ toNat as","The heart of it: from h and the column fact, the tail bs plus the NEW borrow still fits under the tail as — so the recursive call meets its own precondition.")}
+          have hih := ${T("iha","tac","iha bs (subDigits a b borrow).2 hpre","hih : toNat (verticalSub as bs b') + toNat bs + carryVal b' = toNat as","IH on both tails at the borrow-out — usable only because hpre was just proved.")} bs (subDigits a b borrow).2 hpre
+          ${T("simp","tac","simp [carryVal, toNat] at *","hcorrect, hih and the goal become plain Nat arithmetic","")} [carryVal, toNat] at * ; ${T("omega","tac","omega","⊢ difference digit + 10·(tail) + b + borrow = a","Adds this column (hcorrect) onto the already-correct tails (hih); the bookkeeping is linear, so omega finishes.")}</pre></details>
+  <p class="pstep">The everyday corollary <span class="n">— no borrow to start with</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The theorem above carries a borrow parameter, but when you subtract two numbers from scratch there is no borrow yet. A short corollary, ${T("verticalSub_correct'","lem","verticalSub_correct' (a b) (h : toNat b ≤ toNat a) :\n  toNat (verticalSub a b false) + toNat b = toNat a","Fixes the starting borrow to false and drops carryVal false = 0 — the form used to subtract two whole numbers from scratch, and the one the §7 exercise asks you to prove.")}, fixes the starting borrow to <code>false</code>, so <code>carryVal false = 0</code> vanishes from both sides and leaves the clean statement: whenever <code>toNat b ≤ toNat a</code>, we get <code>toNat (verticalSub a b false) + toNat b = toNat a</code>. That is the version you actually call to subtract two numbers.</p></div>`;
+}
+
+function mcq(elId,options,correct,onCorrect){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;if(onCorrect)onCorrect();}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+$("subAlgo").innerHTML=subAlgo();
+$("proofSub").innerHTML=buildSubProof();
+bindTips();
+start();
+
+mcq("predMCQ",[
+  {text:"(0, false)",why:"That's <code>subDigits 5 5 false</code>. With a borrow coming in you must subtract one more."},
+  {text:"(0, true)",why:"5 − 5 is 0, but the incoming borrow then forces 0 − 1, which changes the digit. The difference isn't 0."},
+  {text:"(9, true)",why:"Right: 5 − 5 = 0 with no borrow, then the incoming borrow forces 0 − 1, which is 9 with a borrow-out — so (9, true)."},
+  {text:"(9, false)",why:"The digit is right, but 0 − 1 had to borrow from the next column, so the borrow-out is true, not false."},
+],2);
+mcq("preMCQ",[
+  {text:"A precondition that the top is at least the bottom, <code>toNat b ≤ toNat a</code>, as a hypothesis.",why:"Exactly the verifier's first move: state the domain on which the claim is meant to hold, and make it a hypothesis the proof can use. (§5 will strengthen this slightly, folding the running borrow into the same inequality.)"},
+  {text:"A bound on how many borrows can occur.",why:"The number of borrows is whatever it is; nothing needs to bound it. What must be assumed is that the top is large enough."},
+  {text:"Nothing — the same statement works, subtraction is just addition backwards.",why:"It doesn't: with no assumption, 3 − 7 would force the theorem to claim a negative result equals a digit list, which is false."},
+  {text:"A proof that the result has fewer digits than the inputs.",why:"Digit counts aren't the issue — 100 − 1 = 99 even loses a digit. The real constraint is that the answer not go negative."},
+],0);
+mcq("undefMCQ",[
+  {text:"The algorithm is never actually run on those inputs.",why:"It could be — nothing stops you calling verticalSub on a smaller top. And it is legally reached, e.g. by 5 − 05, where the bottom list is longer but its extra digits are zeros."},
+  {text:"Returning <code>[]</code> happens to be the correct answer there.",why:"It IS correct whenever the branch is legally reached (all-zero tail) — but the reason the theorem survives the b &gt; a cases is the hypothesis, which rules them out."},
+  {text:"The precondition makes the branch harmless: reached with <code>h</code> in hand, the bottom's remaining value is forced to 0 — so <code>[]</code>, worth 0, is exactly right.",why:"Right. The genuinely negative cases contradict h; the reachable cases are all-zero tails where [] is numerically correct."},
+  {text:"We add a separate test to avoid that input.",why:"No runtime test is involved — correctness for those inputs is governed by the hypothesis, at proof time."},
+],2);
+mcq("recurMCQ",[
+  {text:"Nothing extra — the hypothesis carries over automatically.",why:"It doesn't carry for free: the recursive call is on different (shorter) numbers and a possibly new borrow, so its precondition is a new fact to establish."},
+  {text:"You must re-run the base case each time.",why:"The base case is proved once; the per-step obligation is about the precondition, not the base case."},
+  {text:"You weaken the theorem so no precondition is needed.",why:"Weakening it would make it false for b &gt; a. The precondition stays; it just has to be maintained across the recursion."},
+  {text:"You must re-prove the precondition before each recursive call — the <code>hpre</code> steps.",why:"Exactly. The invariant the recursion depends on (b ≤ a) must be shown to survive one column, on the shorter lists and with the new borrow, before the inductive hypothesis can be used. That obligation is what addition didn't have."},
+],3);
+
+mcq("genMCQ",[
+  {text:"So the caller can start the subtraction with whatever borrow they like.",why:"The caller always starts at false; the generality is not for them."},
+  {text:"Lean refuses to run an induction unless every argument is generalised.",why:"Not so — you generalise only what the hypothesis must range over."},
+  {text:"Each recursive column is handed a possibly-different borrow, so the IH must cover them all.",why:"Right. If borrow were fixed, the hypothesis would not apply to the next column's borrow; generalising it makes the IH usable at every step — the same reason addition generalised its carry."},
+  {text:"It makes the proof compile faster.",why:"Speed has nothing to do with it; it is about what the inductive hypothesis can be applied to."},
+],2);
+mcq("colMCQ",[
+  {text:"It settles this one column; the IH settles the tails; <code>omega</code> combines them.",why:"Yes. subDigits_correct is the single-column fact; the IH covers the rest of the number; together they pin down the place-value identity that omega finishes."},
+  {text:"It proves the recursion terminates.",why:"Termination is handled separately, by the combined-length measure — not by subDigits_correct."},
+  {text:"It is only needed in the base case.",why:"The opposite — it is used in the recursive (cons) steps, where an actual column is processed."},
+  {text:"It replaces the precondition <code>h</code>.",why:"It does not; h is still needed, and is maintained separately by the hpre steps."},
+],0);
+mcq("hpreMCQ",[
+  {text:"From the inductive hypothesis.",why:"Circular — the IH may only be applied once hpre is proved; hpre must come from elsewhere."},
+  {text:"From <code>h</code> plus the single-column fact <code>subDigits_correct</code> — <code>omega</code> does the arithmetic.",why:"Right — the incoming inequality h and this column's fact together bound the borrow-out, so the tails still satisfy bottom ≤ top. Note it does NOT use the inductive hypothesis."},
+  {text:"From <code>fin_cases</code> on the digits.",why:"No enumeration happens here; the digits stay symbolic. It is a pure inequality argument."},
+  {text:"It is built into the <code>induction</code> tactic.",why:"induction hands you the IH but proves no side conditions; re-earning the precondition is entirely manual — that is the point of this chapter."},
+],1);
+mcq("minusMCQ",[
+  {text:"Lean has no subtraction on ℕ.",why:"It does — but it truncates at zero, which is exactly the danger."},
+  {text:"ℕ's subtraction truncates (5 − 7 = 0), so <code>a − b</code> can silently mean the wrong thing; the additive form keeps every quantity honest.",why:"Right — truncated subtraction would make the statement look true even where subtraction is undefined; adding back is exact."},
+  {text:"Addition is faster for the kernel to check.",why:"Proof checking isn't about arithmetic speed here; it is about the statement meaning the right thing."},
+  {text:"It's a stylistic convention from the addition chapter.",why:"The addition chapter had no subtraction to avoid; the additive form here is forced by ℕ."},
+],1);
+mcq("structMCQ",[
+  {text:"Because every proof about lists in Lean needs two inductions.",why:"Plenty of list proofs need only one; the shape is dictated by the function, not by Lean."},
+  {text:"Because <code>verticalSub</code> pattern-matches on the shapes of both lists.",why:"Right — the proof mirrors the algorithm: verticalSub branches on []/cons for both arguments, so the proof has to discharge that same case split. Only the outer induction's hypothesis does recursive work; the inner one merely splits b's shape."},
+  {text:"To make the proof shorter.",why:"It doesn't shorten it; it makes the proof match the function so each branch can be closed."},
+  {text:"Because <code>toNat</code> is only defined on non-empty lists.",why:"toNat is defined on every list, including []; that's not the reason."},
+],1);
+mcq("exhaustMCQ",[
+  {text:"To handle digits of 10 or more gracefully at run time.",why:"There are no such digits — a Fin 10 is always below 10, so the case can never occur at run time."},
+  {text:"Because <code>fin_cases</code> will not run without it.",why:"fin_cases is a proof tactic, unrelated to how the function's match is written."},
+  {text:"The match must be exhaustive even over values that provably cannot occur.",why:"Exactly. A Digit is a Fin 10, so n+10 is impossible — yet the match must cover it syntactically; h (the proof the value is below 10) contradicts n+10, and absurd turns that contradiction into the required result."},
+  {text:"To make the table faster to evaluate.",why:"It has no run-time role at all — it is an unreachable branch."},
+],2);
+mcq("backrefMCQ",[
+  {text:"It is an inconsistency between the two files.",why:"Both are deliberate. The difference reflects what a leftover bit means in each algorithm."},
+  {text:"<code>verticalAdd</code> always appends a 1 at the end, regardless of the carry.",why:"It appends 1 only in the carry-true base case; with no leftover carry it returns []."},
+  {text:"Subtraction can never reach the both-empty state, so the value is arbitrary.",why:"It can — equal-length inputs that subtract cleanly end at [], [], false. The both-empty state is reached; it is the true leftover borrow that can't legitimately occur."},
+  {text:"A leftover carry is a genuine new leading digit; a leftover borrow here means b &gt; a, so [] is only an undefined-sentinel.",why:"Exactly. In addition the extra bit has real value 10ᵏ and must appear (5 + 5 = 10); in subtraction a borrow surviving past both lists can only mean the answer would be negative, which the precondition forbids, so the proof never has to honour that []."},
+],3);
+
+/* ==================== notebook worksheet (submit-and-check) ==================== */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"sub_acase", n:1, kind:"code", title:"Fill the missing case",
+   prompt:`Complete the missing case of the subtraction function — the scaffold names it <code>studentSub</code>, a copy of <code>verticalSub</code>. The bottom number is empty and the top still has digits; subtract <code>0</code> from the current digit, propagate the borrow, and recurse. Mirror the main <code>a :: as, b :: bs</code> case shown for reference.`,
+   ctx:`  | a :: as, [], borrow =&gt; <span class="ph">‹ your answer ›</span>
+  | a :: as, b :: bs, borrow =&gt; <span class="c">let (d, b') := subDigits a b borrow;  d :: studentSub as bs b'</span>`,
+   ph:"the result for the  a :: as, [], borrow  case…",
+   sol:`let (d, b') := subDigits a ⟨0, by omega⟩ borrow;  d :: studentSub as [] b'`,
+   hints:[
+     `The bottom list is empty, so treat the missing digit as a zero. Look at the reference case just below and copy its shape, only swapping the bottom digit for a literal zero.`,
+     `Use <code>subDigits</code> on the current top digit, a zero digit, and the incoming borrow; bind its two outputs with <code>let (d, b') := …</code>, then recurse with <code>studentSub</code> on the tail <code>as</code> and the new borrow-out.`,
+     `Shape: a single <code>let (d, b') := …</code> that subtracts, then <code>d ::</code> the recursive call on the remaining digits — the same skeleton as the reference case just below.`,
+   ]},
+  {ex:"sub_eval", n:2, kind:"compute", title:"Evaluate one column",
+   prompt:`<code>3 − 7</code> with no incoming borrow gives the difference digit <code>6</code> and a borrow-out. The statement is fully decidable, so a single tactic closes it — recall <code>decide</code> from <a href="prologue.html#tactics">Chapter 0</a>.`,
+   ctx:`<span class="kw">example</span> : subDigits ⟨3, by omega⟩ ⟨7, by omega⟩ false = (⟨6, by omega⟩, true) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   sol:`decide`,
+   hints:[
+     `Both sides of the equation are fully concrete — no variables anywhere — so Lean can just evaluate them and compare. This is exactly the kind of goal a single decision tactic closes.`,
+     `Reach for <code>decide</code>: it evaluates the decidable equality on the two concrete pairs and confirms they match.`,
+   ]},
+  {ex:"sub_self", n:3, kind:"proof", title:"Prove by exhausting the cases",
+   prompt:`Subtracting a digit from itself, with no borrow, always gives <code>0</code> and no borrow-out. There are only ten digits — exhaust them all and simplify, the way <code>subDigits_correct</code> did in §5. (Stuck? The reference solution is below.)`,
+   ctx:`<span class="kw">theorem</span> self_sub_no_borrow (a : Digit) :
+    subDigits a a false = (⟨0, by omega⟩, false) := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"your proof…",
+   sol:`fin_cases a &lt;;&gt; simp [subDigits, subTable]`,
+   hints:[
+     `A <code>Digit</code> has only ten possible values, so you do not need a clever argument — split into all ten concrete cases and let each one compute. This is the same brute-force pattern <code>subDigits_correct</code> used in §5.`,
+     `Enumerate the digit with <code>fin_cases a</code>, then in one go on every resulting goal run <code>simp</code> unfolding <code>subDigits</code> and <code>subTable</code> so each concrete lookup evaluates.`,
+     `The proof is two tactics joined by the "apply to all goals" combinator <code>&lt;;&gt;</code>: first the case-split on <code>a</code>, then a single <code>simp</code> given the two definitions to unfold.`,
+   ]},
+  {ex:"sub_proof", n:4, kind:"proof", title:"Prove the no-borrow corollary",
+   prompt:`Specialise <code>verticalSub_correct</code> to <code>borrow = false</code>. Two things to handle: discharge its (stronger) precondition from <code>h</code>, and clear the leftover <code>carryVal false</code>. <code>simpa</code> does the clearing on both sides. This one is a notch harder; reach for the error message if you get stuck.`,
+   ctx:`<span class="kw">theorem</span> sub_correct_noborrow (a b : MultiDigit) (h : toNat b ≤ toNat a) :
+    toNat (verticalSub a b false) + toNat b = toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one line, using verticalSub_correct…",
+   sol:`simpa using verticalSub_correct a b false (by simpa using h)`,
+   hints:[
+     `You do not need a fresh induction — the general theorem <code>verticalSub_correct</code> already does the work. Instantiate it at this <code>a</code>, <code>b</code>, and the starting borrow <code>false</code>, and the goal is that theorem with a <code>carryVal false</code> that reduces to zero.`,
+     `Feed <code>verticalSub_correct a b false</code> into <code>simpa using …</code> to strip the <code>carryVal false</code> from both sides; its precondition is slightly stronger, so supply it as a nested <code>(by simpa using h)</code>.`,
+   ]},
+  {ex:"sub_whole", n:5, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`Nothing pre-filled this time. Subtracting <code>0</code> from a digit, with no incoming borrow, returns that digit and no borrow. Prove it for every digit.`,
+   ctx:`<span class="kw">example</span> (a : Digit) : subDigits a ⟨0, by omega⟩ false = (a, false) := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"ten digits — one tactic to split, one to finish…",
+   hints:[
+     `A digit has only ten values, so you don't need a general argument — check them all, the same brute-force pattern the §5 table proofs used.`,
+     `Split with <code>fin_cases a</code>, then simplify each concrete case with <code>simp</code> given the definitions <code>subDigits</code> and <code>subTable</code>; chain them with the all-goals combinator.`],
+   sol:`fin_cases a &lt;;&gt; simp [subDigits, subTable]`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script src="book.js"></script>
+</body>
+</html>

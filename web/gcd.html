@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Euclid's GCD — described, implemented, visualised, proved</title>
+<meta name="description" content="Euclid's subtractive GCD as rectangle tiling, written in Lean 4 and proved equal to Nat.gcd — with the book's first real termination proof and functional induction."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📐</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+    --tac:#4dd0e1;--lem:#ffd166;--kw:#c792ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:820px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:24px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:42px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--cyan);margin:22px 0 6px}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:11px 0}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  ol{margin:11px 0;padding-left:22px} ol li{margin:6px 0}
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0}
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input.num{width:90px;padding:7px 10px;font-size:16px;font-family:inherit;background:var(--box);border:1px solid var(--line);color:#fff;border-radius:8px}
+  button{padding:7px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  button.ghost{background:transparent;color:var(--cyan)} button:disabled{opacity:.4;cursor:default}
+  .opSym{color:var(--orange);font-size:18px}
+  .gwrap{overflow-x:auto;max-width:100%;padding:6px 2px}
+  .gboard{position:relative;background:#0a0a0a;border-radius:4px}
+  .gboard.grid{background-image:linear-gradient(to right, rgba(255,255,255,.07) 1px, transparent 1px),linear-gradient(to bottom, rgba(255,255,255,.07) 1px, transparent 1px)}
+  .gsq{position:absolute;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;font-size:11px}
+  .gsq.past{background:rgba(46,100,112,.92);border:1px solid #3a7e8e;color:transparent}
+  .gsq.cur{background:rgba(176,98,0,.92);border:1px solid var(--orange);color:#ffd9a8}
+  .gsq.todo{background:rgba(150,150,150,.05);border:1px solid #2a2a2a;color:transparent}
+  .gsq.gcd{background:rgba(76,175,80,.25);border:1px solid var(--green);color:var(--green)}
+  .gfin{position:absolute;inset:0;background:rgba(76,175,80,.18);border:1px solid var(--green)}
+  .srow{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+  .ipanel{border:1px solid var(--cyan);border-radius:8px;background:#0c1416;padding:14px 16px;min-width:300px;font-size:14px}
+  .ipanel .ititle{color:var(--cyan);font-weight:bold;margin-bottom:10px;font-size:15px}
+  .ipanel .igen{color:var(--muted);margin-bottom:10px}
+  .ipanel .ieq{color:var(--yellow);margin:4px 0;font-size:15px;word-break:break-word}
+  .ipanel .iok{color:var(--green);font-weight:bold;margin-top:10px;font-size:14px} .ipanel .ino{color:var(--red);font-weight:bold;margin-top:10px}
+  .stepdetail{background:#11181a;border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin-top:10px;font-size:13px;color:#cfe7ec;max-width:560px}
+  pre.lean{background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:15px 17px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;margin:14px 0}
+  pre.lean .c{color:#5c6370;font-style:italic} pre.lean .kw{color:var(--kw)} pre.lean .ty{color:#82aaff} pre.lean .ph{color:var(--yellow)}
+  .tok{cursor:help;border-bottom:1px dotted currentColor} .tok.tac{color:var(--tac)} .tok.lem{color:var(--lem)}
+  #tip{position:absolute;display:none;max-width:440px;z-index:50;background:#000;color:#cfcfcf;border:1px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.6);pointer-events:none}
+  #tip .th{color:var(--cyan);font-weight:bold;white-space:pre-wrap} #tip .goal{margin-top:7px;color:#ffe14d;white-space:pre-wrap} #tip .note2{margin-top:7px;color:#aaa;white-space:pre-wrap}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .recall{background:#15110a;border-left:3px solid var(--orange);padding:8px 13px;margin:14px 0;font-size:13.5px;color:#ecdcc7;border-radius:0 6px 6px 0}
+  .pstep{margin:24px 0 2px;color:var(--cyan);font-size:14px;font-weight:600}
+  .pstep .n{color:var(--muted);font-weight:400}
+  .pager{display:flex;justify-content:space-between;margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+  .ex{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin:16px 0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;color:#0d0d0d;background:var(--cyan);border-radius:4px;padding:2px 8px;margin-bottom:10px;font-weight:bold}
+  button.opt{display:block;width:100%;text-align:left;background:var(--box);border:1px solid var(--line);color:var(--fg);margin:6px 0;padding:10px 12px}
+  button.opt:hover{border-color:var(--accent)} button.opt.right{border-color:var(--green);background:#0f2a14} button.opt.wrong{border-color:var(--red);background:#2a0f0f}
+  .fb{margin-top:8px;font-size:13.5px;min-height:18px} .fb.ok{color:var(--green)} .fb.no{color:var(--red)}
+  .small{font-size:13px;color:var(--muted)}
+  .gfig{width:max-content;margin:16px auto;background:#000;border:1px solid var(--line);border-radius:10px;padding:18px}
+  ul.steps{font-size:13px;color:var(--muted);margin:10px 0;padding-left:20px}
+  ul.steps li{margin:4px 0}
+  textarea.led{width:100%;min-height:48px;background:#0a0a0a;border:1px solid var(--line);color:#dcdcdc;font-family:inherit;font-size:13px;padding:9px;border-radius:6px;resize:vertical}
+  .out{background:#0a0a0a;border:1px solid var(--line);border-radius:6px;padding:9px;font-size:12.5px;white-space:pre-wrap;color:#cfcfcf;margin-top:8px;min-height:18px}
+  .out.ok{color:var(--green)} .out.no{color:var(--red)}
+  .wstoolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#12181a;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:14px 0}
+  .wstoolbar button{font-size:13px;padding:6px 12px}
+  .wstoolbar .wsstatus{margin-left:auto;color:var(--muted);font-size:13px}
+  .wcell{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:14px 0;overflow:hidden}
+  .whead{display:flex;align-items:center;gap:10px;background:#12181a;border-bottom:1px solid var(--line);padding:9px 14px}
+  .whead .wn{color:var(--muted);font-size:12px}
+  .whead .wtitle{color:#fff;font-size:14px;font-weight:600}
+  .whead .wkind{margin-left:auto;font-size:10px;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:2px 8px;font-weight:bold;color:#0d0d0d}
+  .wkind.code{background:var(--cyan)} .wkind.proof{background:var(--lem)} .wkind.compute{background:var(--green)}
+  .wprompt{padding:12px 14px 0;font-size:14px}
+  .wctx{margin:12px 14px 0 !important}
+  .wedit{padding:10px 14px 0}
+  .wbar{display:flex;align-items:center;gap:12px;padding:9px 14px 0}
+  .wbar .wstat{font-size:14px;font-weight:bold}
+  .wcell .out{margin:8px 14px 0}
+  .refsol{margin:10px 14px 14px}
+  .refsol summary{cursor:pointer;color:var(--cyan);font-size:13px;list-style:none;user-select:none;width:max-content}
+  .refsol summary::-webkit-details-marker{display:none}
+  .refsol summary::before{content:"▸ reference solution"}
+  .refsol[open] summary::before{content:"▾ reference solution"}
+  .refsol pre.lean{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <noscript><div class="note">This chapter's code listings, visualiser, and exercises are rendered by JavaScript —
+    with it disabled you will only see the prose. The full Lean source is in the
+    <a href="https://github.com/UnOrdinary19/Lean_formalization">repo</a>.</div></noscript>
+  <p class="sub"><a href="cover.html">← Contents</a></p>
+  <h1>Euclid's GCD</h1>
+  <p class="sub">Described, implemented in Lean, visualised, and proved correct.
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a></p>
+
+  <div class="recall">Part III leaves the digit-by-digit work behind. This algorithm is a <em>recursion on whole
+     numbers</em>, and it lives on <a href="subtraction.html">Chapter 2</a>: the subtraction it runs is
+     <code>verticalSub</code>, and that chapter's correctness theorem is what convinces Lean the recursion stops.
+     Two ideas are new here. It is the first algorithm whose termination Lean does not hand us for free, and its
+     proof uses an induction shaped like the function rather than like a list.</div>
+
+  <!-- 1. DESCRIPTION -->
+  <h2>1 · What the algorithm does</h2>
+  <p>Picture two numbers, 48 and 36, as the sides of a rectangle. Now a tiling question about it: what is the
+     largest square that paves the whole rectangle exactly, leaving no gaps and no overhang, every tile the same
+     size?</p>
+  <p>Euclid's answer is to carve. If the rectangle is already a square, its side is the answer. If not, cut off the
+     biggest square you can — one as wide as the shorter side — and ask the same question about the strip left over.
+     Cutting a 36 × 36 square from a 48 × 36 rectangle leaves 12 × 36, and in arithmetic that cut is just
+     <em>subtracting the shorter side from the longer</em>. Keep carving, and the square you finally land on has the
+     answer for its side.</p>
+  <div class="gfig" role="img" aria-label="A 48 by 36 rectangle carved into one 36-square and three 12-squares; the last 12-square is the gcd">
+    <div class="gboard" style="width:192px;height:144px">
+      <div class="gsq past" style="left:0;top:0;width:144px;height:144px"></div>
+      <div class="gsq past" style="left:144px;top:0;width:48px;height:48px"></div>
+      <div class="gsq past" style="left:144px;top:48px;width:48px;height:48px"></div>
+      <div class="gsq gcd" style="left:144px;top:96px;width:48px;height:48px">12</div>
+    </div>
+  </div>
+  <ul class="steps">
+    <li>gcd(48, 36): remove a 36 × 36 square → a 12 × 36 strip remains.</li>
+    <li>gcd(12, 36): remove a 12 × 12 square, twice → 12 × 12 remains.</li>
+    <li>gcd(12, 12): the leftover is a <span style="color:var(--green)">square</span>. Its side, 12, is the gcd —
+        and indeed 12 × 12 tiles the original rectangle exactly: 4 across, 3 down.</li>
+  </ul>
+  <p>Why does the answer survive each cut? A square of side <code>s</code> tiles a rectangle exactly when
+     <code>s</code> divides <em>both</em> sides. And the common divisors of <code>a</code> and <code>b</code> are
+     exactly the common divisors of <code>a − b</code> and <code>b</code>: anything dividing both sides divides
+     their difference, and anything dividing the difference and one side divides their sum. So each cut changes
+     the rectangle but not the question's answer:</p>
+  <p style="text-align:center;color:var(--yellow)">gcd(a, b) = gcd(a − b, b) &nbsp;&nbsp;whenever b ≤ a.</p>
+  <p>That single equation, applied until the two numbers agree, is the whole algorithm.</p>
+  <div class="note"><b>Why subtraction, not remainder.</b> The fast Euclid you may have seen replaces
+     <code>gcd(a, b)</code> with <code>gcd(b, a mod b)</code> — fewer steps, but a <code>mod</code> hides a whole
+     division inside each step. We use the older <em>subtractive</em> form, <code>gcd(a, b) = gcd(a − b, b)</code>,
+     because it is the one you can actually see: repeatedly carving the largest square tile off a rectangle. The
+     correctness and the tiling picture fall out of the same equation. It is slower, and that cost is exactly what
+     surfaces as the termination proof in §2.</div>
+
+  <!-- 2. IMPLEMENTATION -->
+  <h2>2 · The implementation, in Lean</h2>
+  <p>Just one recursive function this time, but it asks something the earlier chapters never did. Those walked down
+     a list, so Lean could see for itself that the recursion stopped. Here the arguments are plain
+     <em>numbers</em> that shrink by subtraction, and Lean won't take termination on trust: you have to give it a
+     measure and show the measure falls at every call.</p>
+  <div id="gcdImpl"></div>
+  <div class="note">The 0-cases match the mathematical convention <code>gcd 0 n = n</code> — and they are load-bearing.
+     Starting from two positive numbers the recursion never reaches a 0 (subtracting the smaller from the strictly
+     larger keeps both positive), but a Lean function must be defined on <em>every</em> input, and without the guard
+     <code>gcdSub 0 5</code> would subtract 0 forever, making no progress.</div>
+
+  <!-- 3. VISUALIZATION -->
+  <h2>3 · See it run — carving the rectangle</h2>
+  <p>Step through the carving. Blue squares are already removed, the orange square is being removed now, and the
+     faint region is still to do. The panel tracks the invariant that makes it all work: the gcd of the leftover
+     rectangle's sides <em>never changes</em>. The last step re-tiles the whole rectangle with the answer.</p>
+  <div class="stage">
+    <div class="controls">
+      <input class="num" id="opA" value="48"/><span class="opSym">×</span><input class="num" id="opB" value="36"/>
+      <button id="go">Go</button><span style="flex:1"></span>
+      <button class="ghost" id="prev">← Prev</button><span id="lbl"></span><button class="ghost" id="next">Next →</button>
+    </div>
+    <div class="srow">
+      <div class="gwrap"><div class="gboard grid" id="board"></div></div>
+      <div class="ipanel" id="ipanel"></div>
+    </div>
+    <div class="stepdetail" id="detail"></div>
+  </div>
+  <p>Try lopsided sides too, like <code>144 × 5</code>. The carving crawls, because subtractive Euclid peels off one
+     small square at a time. That is the inefficiency the usual remainder version fixes, trading a long run of
+     subtractions for a single <code>a mod b</code>. The proofs only care about correctness, though, and the slow
+     version is the honest, geometric one to reason about.</p>
+
+  <!-- 4. VERIFIER -->
+  <h2>4 · Before the proof — think like a verifier</h2>
+  <p>Six chapters in, you know the routine: before reading the proof, try to predict its shape. What should the
+     statement say? What one fact does each recursive step lean on? And, new this time, why does the recursion
+     stop at all?</p>
+
+  <h3>What should the theorem say?</h3>
+  <div class="ex"><span class="tag">PREDICT</span><div id="preMCQ"></div></div>
+
+  <h3>The step that does all the work</h3>
+  <p>Each recursive call replaces <code>(a, b)</code> by <code>(a − b, b)</code>. Why is that allowed to leave
+     the answer unchanged?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="keyMCQ"></div></div>
+
+  <h3>Why does it stop?</h3>
+  <p>The recursion doesn't consume a list — both arguments stay as long as they like. What convinces Lean it
+     terminates?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="termPreMCQ"></div></div>
+
+  <h3>Is this the right specification?</h3>
+  <p>It is tempting to say the gcd is simply "a number that divides both <code>a</code> and <code>b</code>." But
+     <code>1</code> divides both — and so does every other common divisor — so that test is passed by many numbers,
+     most of them wrong. A correct specification needs two clauses: the result divides both sides, <em>and</em> it is
+     the <em>greatest</em> such number (every common divisor divides it). That is exactly what <code>gcdSub_tiles</code>
+     states; "divides both" alone would let a lazy algorithm return <code>1</code> every time and still look correct.</p>
+
+  <!-- 5. PROOF -->
+  <h2>5 · The proof</h2>
+  <p>Two theorems, and each comes in two parts. First <strong>the argument</strong> in plain words: read just these
+     and you'll see why the algorithm is correct and why it deserves the name gcd. Then, folded underneath,
+     <strong>the full Lean proof</strong>, for anyone who wants the machine-checked details. You can follow the whole
+     chapter without opening a single dropdown.</p>
+  <p>The proof brings in one new tool: <strong>functional induction</strong>. Every recursive function Lean accepts
+     comes with its own induction principle, shaped to match the function's case-split.
+     <code>induction a, b using gcdSub.induct</code> hands us five goals, one per branch of the definition, and in
+     the two recursive branches it gives us the inductive hypothesis right where the recursive call sits. Nothing is
+     peeled off a list; the recursion itself is what we climb.
+     <span class="small">Goal states in the tooltips are lightly abbreviated; the shapes are what matter.</span></p>
+  <div id="proofGcd"></div>
+
+  <!-- 6. TEST THE IDEAS -->
+  <h2>6 · Test the ideas</h2>
+
+  <h3>The 0-cases</h3>
+  <p>Starting from two <em>positive</em> numbers, can the recursion ever reach a 0?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="zeroMCQ"></div></div>
+
+  <h3>What functional induction buys</h3>
+  <p><code>induction a, b using gcdSub.induct</code> — what exactly does it produce?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="funindMCQ"></div></div>
+
+  <h3>Chapter 2, cited twice</h3>
+  <p><code>verticalSub_correct'</code> appears in two different roles in this chapter. Which two?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="reuseMCQ"></div></div>
+
+  <h3>The price of subtraction</h3>
+  <p>Roughly how many recursive steps does <code>gcdSub</code> take on gcd(1&#8239;000&#8239;000, 1)?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="slowMCQ"></div></div>
+
+  <h3>Predict a run</h3>
+  <p>What does <code>gcdSub</code> return on gcd(14, 21), and how does it get there?</p>
+  <div class="ex"><span class="tag">PREDICT</span><div id="traceMCQ"></div></div>
+
+  <h3>Both halves of the tiling theorem</h3>
+  <p><code>gcdSub_tiles</code> proves two things: the answer divides both sides, and every common divisor divides the
+     answer. Why isn't the first half enough on its own?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="tilesMCQ"></div></div>
+
+  <h3>Drop the equal-sides check?</h3>
+  <p>Suppose you deleted the <code>toNat a = toNat b</code> branch, leaving only the two subtraction branches. What
+     happens?</p>
+  <div class="ex"><span class="tag">CHOOSE</span><div id="equalMCQ"></div></div>
+
+  <!-- 7. WORKSHEET -->
+  <h2>7 · Write some Lean</h2>
+  <p>A worksheet. Each cell has a starting goal with a gap for you to fill. Press <b>Run</b> (or <b>Ctrl+Enter</b>
+     in the cell) and Lean compiles your code on the server. <b>Run all</b> checks every cell in turn,
+     <b>Reset all</b> restores the blank cells, and every cell hides a <em>reference solution</em> you can reveal
+     once you've tried. <span class="small">(Requires the checker server — see <code>web/checker/README.md</code>.
+     In the listings digit literals may be shown as <code>⟨8,_⟩</code>; the server spells them
+     <code>⟨8, by omega⟩</code>. The first run is slow: Lean is cold-loading Mathlib.)</span></p>
+  <div class="wstoolbar">
+    <button id="runAll">▶ Run all</button>
+    <button class="ghost" id="clearAll">Clear outputs</button>
+    <button class="ghost" id="resetAll">↺ Reset all</button>
+    <span class="wsstatus" id="wsstatus"></span>
+  </div>
+  <div id="worksheet"></div>
+
+  <p class="small">The real, machine-checked proofs are exactly those in §5 — clone the
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">repo</a> and run them in VS Code.</p>
+
+  <div class="pager">
+    <a href="divisibility.html">← Divisibility Tests</a>
+    <a href="cover.html">Contents</a>
+    <a href="cuberoot.html">The Cube-Root Trick →</a>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ae=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=s=>{s=(s||"").replace(/\D/g,"").replace(/^0+(?=\d)/,"");return s===""?"0":s;};
+
+/* ---- the carving, ported from the repo's gcdVisualization.lean ---- */
+function gcdNum(a,b){while(b){[a,b]=[b,a%b];}return a;}
+function gcdTrace(a,b){const t=[];for(;;){t.push([a,b]);if(a===0||b===0||a===b)break;if(b<a)a-=b;else b-=a;}return t;}
+function gcdSquares(w,h){const s=[];let x=0,y=0;
+  for(;;){if(w===0||h===0)break;
+    if(w===h){s.push([x,y,w]);break;}
+    if(h<w){s.push([x,y,h]);x+=h;w-=h;}
+    else{s.push([x,y,w]);y+=w;h-=w;}}
+  return s;}
+
+const G={a:48,b:36,step:0,ok:true,msg:"",trace:null,squares:null,g:0,n:0,scale:4};
+function gcdRender(){
+  if(!G.ok){$("board").innerHTML="";$("board").style.width="340px";$("board").style.height="60px";
+    $("board").classList.remove("grid");
+    $("board").innerHTML=`<div style="color:var(--red);padding:10px;font-size:13px;max-width:320px;white-space:normal">${G.msg}</div>`;
+    $("detail").innerHTML="";$("ipanel").innerHTML=`<div class="ino">no run</div>`;
+    $("lbl").textContent="—";$("prev").disabled=true;$("next").disabled=true;return;}
+  const a0=G.a,b0=G.b,sc=G.scale,n=G.n,g=G.g,step=G.step,final=step>=n+1;
+  const bd=$("board");
+  bd.style.width=(a0*sc)+"px";bd.style.height=(b0*sc)+"px";bd.style.backgroundSize=sc+"px "+sc+"px";
+  bd.classList.toggle("grid",!final);
+  let h="";
+  if(final){
+    h=`<div class="gfin" style="background-image:linear-gradient(to right, rgba(76,175,80,.8) 1px, transparent 1px),linear-gradient(to bottom, rgba(76,175,80,.8) 1px, transparent 1px);background-size:${g*sc}px ${g*sc}px"></div>`;
+  } else if(step>0){
+    const k=step-1;
+    G.squares.forEach((sq,j)=>{const [x,y,side]=sq;
+      const last=(j===G.squares.length-1);
+      let cls,label="";
+      if(j<k)cls="past";
+      else if(j===k){cls=last?"gcd":"cur";label=(side*sc>26)?("side "+side):"";}
+      else cls="todo";
+      h+=`<div class="gsq ${cls}" style="left:${x*sc}px;top:${y*sc}px;width:${side*sc}px;height:${side*sc}px">${label}</div>`;});
+  }
+  bd.innerHTML=h;
+  // accumulating log
+  let log="";
+  for(let j=0;j<Math.min(step,n);j++){
+    const [ca,cb]=G.trace[j],act=(j===step-1&&!final);
+    let txt;
+    if(ca===cb)txt=`gcd(${ca}, ${cb}) = ${ca} — a square!`;
+    else if(cb<ca)txt=`gcd(${ca}, ${cb}) = gcd(${ca-cb}, ${cb})`;
+    else txt=`gcd(${ca}, ${cb}) = gcd(${ca}, ${cb-ca})`;
+    log+=`<div style="padding:3px 7px;margin:2px 0;border-radius:5px;${act?"background:#2a2a00;color:var(--yellow)":"color:#00aaff"}">${txt}</div>`;}
+  if(final)log+=`<div style="padding:3px 7px;margin:2px 0;color:var(--green)">✓ ${g} × ${g} tiles the whole rectangle — ${a0/g} across × ${b0/g} down</div>`;
+  $("detail").innerHTML=log||`An ${a0} × ${b0} rectangle. What is the largest square that tiles it exactly?`;
+  // invariant panel
+  if(step===0){
+    $("ipanel").innerHTML=`<div class="ititle">The question</div>`+
+      `<div class="igen">largest square tiling the rectangle = gcd of its sides</div>`+
+      `<div class="ieq">gcd(${a0}, ${b0}) = ?</div>`;
+  } else {
+    const cur=G.trace[Math.min(step-1,G.trace.length-1)],[ca,cb]=cur;
+    const inv=gcdNum(ca,cb);
+    $("ipanel").innerHTML=
+      `<div class="ititle">Invariant — ${final?"finished":`step ${step} of ${n+1}`}</div>`+
+      `<div class="igen">the gcd of the leftover sides never changes</div>`+
+      `<div class="ieq">gcd(${ca}, ${cb}) = gcd(${a0}, ${b0})</div>`+
+      `<div class="ieq">${inv} = ${g}</div>`+
+      (inv===g?`<div class="iok">✓ holds</div>`:`<div class="ino">✗</div>`)+
+      (final?`<div class="igen" style="margin-top:8px">gcd = ${g}: &nbsp;${a0} = ${a0/g} × ${g}, &nbsp;${b0} = ${b0/g} × ${g}</div>`:``);
+  }
+  $("lbl").textContent=`step ${step+1} of ${n+2}`;
+  $("prev").disabled=step<=0;$("next").disabled=step>=n+1;
+}
+function start(){
+  const a=+clean($("opA").value),b=+clean($("opB").value);
+  if(a<1||b<1){G.ok=false;G.msg="Both sides must be positive — the rectangle needs area. (The code's 0-cases exist so the function is total; see §2.)";gcdRender();return;}
+  if(a>300||b>300){G.ok=false;G.msg="Keep the sides at 300 or below so the rectangle fits on screen.";gcdRender();return;}
+  const squares=gcdSquares(a,b);
+  if(squares.length>80){G.ok=false;G.msg=`That would take ${squares.length} carving steps — subtractive Euclid is painfully slow when one side dwarfs the other (see the note below the visualiser). Try closer sides.`;gcdRender();return;}
+  G.ok=true;G.a=a;G.b=b;G.trace=gcdTrace(a,b);G.squares=squares;G.n=squares.length;
+  G.g=gcdNum(a,b);G.scale=Math.max(1,Math.floor(320/Math.max(a,b)));G.step=0;
+  gcdRender();
+}
+$("go").onclick=start;
+$("prev").onclick=()=>{if(G.ok&&G.step>0){G.step--;gcdRender();}};
+$("next").onclick=()=>{if(G.ok&&G.step<G.n+1){G.step++;gcdRender();}};
+[$("opA"),$("opB")].forEach(e=>e.addEventListener("keydown",ev=>{if(ev.key==="Enter")start();}));
+
+/* ---- tooltip engine ---- */
+const tip=$("tip");
+function bindTips(){
+  document.querySelectorAll(".tok").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{tip.innerHTML="";
+      const h=document.createElement("div");h.className="th";h.textContent=el.dataset.th||"";tip.appendChild(h);
+      if(el.dataset.goal){const g=document.createElement("div");g.className="goal";g.textContent="⊢ "+el.dataset.goal;tip.appendChild(g);}
+      if(el.dataset.note){const n=document.createElement("div");n.className="note2";n.textContent=el.dataset.note;tip.appendChild(n);}
+      tip.style.display="block";});
+    el.addEventListener("mousemove",e=>{const pad=14;let x=e.pageX+pad,y=e.pageY+pad;const w=tip.offsetWidth,vw=window.innerWidth+window.scrollX;if(x+w>vw)x=Math.max(8,e.pageX-w-pad);tip.style.left=x+"px";tip.style.top=y+"px";});
+    el.addEventListener("mouseleave",()=>tip.style.display="none");
+  });
+}
+function tok(text,cls,header,goal,note){let s=`<span class="tok ${cls}" data-th="${ae(header)}"`;if(goal)s+=` data-goal="${ae(goal)}"`;if(note)s+=` data-note="${ae(note)}"`;return s+`>${ae(text)}</span>`;}
+const C=s=>`<span class="c">${s}</span>`,K=s=>`<span class="kw">${s}</span>`,TY=s=>`<span class="ty">${s}</span>`,T=tok;
+
+/* ---- §2 implementation ---- */
+function gcdImpl(){ return `<p class="pstep">Layer 1 · The recursion <span class="n">— five branches, one idea</span></p>
+<p>If either number is 0 or the two are equal, stop; otherwise subtract the smaller from the larger and recurse.
+The subtraction is <code>verticalSub</code> — Chapter 2's algorithm, working for its living.</p>
+<pre class="lean">${C("-- Subtractive Euclid — the rectangular-tiling algorithm.")}
+${K("def")} ${T("gcdSub","lem","gcdSub (a b : MultiDigit) : MultiDigit","","Stop at a square (equal sides) or an empty side; else remove the largest square that fits — subtract the shorter side from the longer.")} (a b : MultiDigit) : MultiDigit :=
+  ${K("if")} toNat a = 0 ${K("then")} b          ${C("-- gcd 0 b = b")}
+  ${K("else if")} toNat b = 0 ${K("then")} a     ${C("-- gcd a 0 = a")}
+  ${K("else if")} toNat a = toNat b ${K("then")} a   ${C("-- a square: its side is the answer")}
+  ${K("else if")} toNat b &lt; toNat a ${K("then")}
+    gcdSub (${T("verticalSub","lem","verticalSub a b false","","Chapter 2's subtraction — the carving knife. The false is the starting borrow.")} a b ${K("false")}) b     ${C("-- carve a b×b square: recurse on (a − b, b)")}
+  ${K("else")}
+    gcdSub a (verticalSub b a ${K("false")})     ${C("-- symmetric: recurse on (a, b − a)")}</pre>
+<p class="pstep">Layer 2 · Convincing Lean it stops <span class="n">— the first termination proof in the book</span></p>
+<p>Every earlier recursion shrank a list, and Lean saw it. Here nothing is structurally smaller — <code>a − b</code>
+is just another <code>MultiDigit</code> — so Lean demands a <em>measure</em>: a number that strictly drops at every
+recursive call. We offer the sum of the two values, and prove it drops using the subtraction chapter's theorem.</p>
+<pre class="lean">${T("termination_by","lem","termination_by toNat a + toNat b","","Not a tactic — a clause on the definition naming the measure. Lean now owes us two goals: that the measure drops at each of the two recursive calls.")} toNat a + toNat b
+${T("decreasing_by","lem","decreasing_by","two goals — the measure drops at each recursive call","Where the debt is paid. Each bullet handles one recursive call.")}
+  · ${C("-- call on (a − b, b): show  toNat (a−b) + toNat b  <  toNat a + toNat b")}
+    ${K("have")} hle : toNat b ≤ toNat a := ${K("by")} ${T("omega","tac","omega","toNat b ≤ toNat a","From the branch conditions: b ≠ 0, a ≠ b, and b < a are all in scope here.")}
+    ${K("have")} ${T("hsub","lem","hsub : toNat (verticalSub a b false) + toNat b = toNat a","","Chapter 2's corollary, cited: the subtraction really computes a − b. This is what makes the measure drop provable at all.")} : toNat (verticalSub a b ${K("false")}) + toNat b = toNat a :=
+      ${T("verticalSub_correct'","lem","verticalSub_correct' a b hle","","The no-borrow corollary you proved in the Chapter 2 worksheet — now powering a termination argument.")} a b hle
+    ${T("omega","tac","omega","toNat (verticalSub a b false) + toNat b < toNat a + toNat b","With hsub the left side IS toNat a, and toNat b > 0 from the branch guard — so the sum strictly drops.")}
+  · ${C("-- call on (a, b − a): the mirror image")}
+    ${K("have")} hle : toNat a ≤ toNat b := ${K("by")} omega
+    ${K("have")} hsub : toNat (verticalSub b a ${K("false")}) + toNat a = toNat b :=
+      verticalSub_correct' b a hle
+    omega</pre>`; }
+
+/* ---- §5 proof ---- */
+function gcdProof(){ return `<p class="pstep">Theorem 1, base cases · When there's nothing left to carve <span class="n">— a = 0, b = 0, and the square</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>The whole correctness claim is that the algorithm's answer <em>is</em> the mathematical gcd — Mathlib's <code>Nat.gcd</code> is the yardstick. We prove it by functional induction, which hands us one case per branch of the definition. Three of them are the stopping branches, and each is a one-liner backed by a library fact: if a is 0 the answer is b and gcd(0, b) = b; symmetrically for b = 0; and if the sides are equal we've hit a square, where gcd(n, n) = n. In each case the proof just walks the if-chain to the right branch and cites the matching <code>Nat.gcd</code> identity.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${C("-- The algorithm's output IS the mathematical gcd: Mathlib's Nat.gcd is the specification.")}
+${K("theorem")} ${T("gcdSub_correct","lem","gcdSub_correct (a b : MultiDigit) :\n  toNat (gcdSub a b) = Nat.gcd (toNat a) (toNat b)","","Pins the algorithm to the library's gcd. Every fact Mathlib knows about Nat.gcd now transfers to gcdSub — the tiling theorem below cashes that in.")} (a b : MultiDigit) :
+    toNat (gcdSub a b) = Nat.gcd (toNat a) (toNat b) := ${K("by")}
+  ${C("-- not list induction: induction on the call structure of gcdSub itself")}
+  ${T("induction","tac","induction a, b using gcdSub.induct","five goals — one per branch of the definition","Functional induction. Lean generated gcdSub.induct from the definition: each branch of the if-chain becomes a case, and in the recursive branches the inductive hypothesis is available exactly at the recursive call.")} a, b ${K("using")} gcdSub.induct ${K("with")}
+  | case1 a b ${T("ha","lem","ha : toNat a = 0","","Each case carries the branch conditions that led to it as hypotheses — here, that the first if fired.")} =&gt;
+      ${C("-- toNat a = 0: the algorithm returns b, and gcd 0 n = n")}
+      ${T("rw","tac","rw [gcdSub, if_pos ha, ha, Nat.gcd_zero_left]","no goals","Unfold one step of gcdSub, take the true branch (if_pos ha), rewrite toNat a to 0, and close with the library's gcd 0 n = n.")} [gcdSub, ${T("if_pos","lem","if_pos ha","","Selects the then-branch of an if, given a proof its condition holds. if_neg does the opposite. These are how a proof walks an if-chain.")} ha, ha, ${T("Nat.gcd_zero_left","lem","Nat.gcd_zero_left : Nat.gcd 0 n = n","","From Mathlib — cited, not reproved.")}]
+  | case2 a b ha hb =&gt;
+      ${C("-- toNat b = 0: returns a, and gcd n 0 = n")}
+      rw [gcdSub, ${T("if_neg","lem","if_neg ha","","The first condition failed (ha now proves toNat a ≠ 0 is the negation context), so step past it to the next branch.")} ha, if_pos hb, hb, Nat.gcd_zero_right]
+  | case3 a b ha hb hab =&gt;
+      ${C("-- toNat a = toNat b: a square — returns a, and gcd n n = n")}
+      rw [gcdSub, if_neg ha, if_neg hb, if_pos hab, hab, ${T("Nat.gcd_self","lem","Nat.gcd_self : Nat.gcd n n = n","","The stopping case of the carving: a square's side is its own gcd.")}]</pre></details>
+  <p class="pstep">Theorem 1, subtraction cases · The carving step <span class="n">— recurse on a − b, and its mirror image</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>Now the two branches that actually carve, and here functional induction earns its keep: at each recursive call it hands us the theorem already proved for the smaller rectangle — the inductive hypothesis, sitting exactly where we need it. Rewrite the recursive call by that hypothesis and the goal collapses to a pure fact about <code>Nat.gcd</code>: that gcd(a − b, b) = gcd(a, b), which is §1's equation, Mathlib's <code>Nat.gcd_sub_self_left</code>. Chapter 2 is cited once more to confirm the subtraction really computes a − b. The b − a branch is the same argument mirrored; the only wrinkle is that the library lemma subtracts on the left, so two <code>Nat.gcd_comm</code> flips line the goal up before we close it.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">  | case4 a b ha hb hab hlt ${T("ih","lem","ih : toNat (gcdSub (verticalSub a b false) b) = Nat.gcd (toNat (verticalSub a b false)) (toNat b)","","The inductive hypothesis — the theorem, already true for the recursive call's arguments. Functional induction put it here for us.")} =&gt;
+      ${C("-- toNat b < toNat a: the subtract-and-recurse branch")}
+      ${T("rw","tac","rw [gcdSub, if_neg ha, if_neg hb, if_neg hab, if_pos hlt, ih]","Nat.gcd (toNat (verticalSub a b false)) (toNat b) = Nat.gcd (toNat a) (toNat b)","Walk the if-chain to the fourth branch, then replace the recursive call by ih. What remains is pure gcd arithmetic.")} [gcdSub, if_neg ha, if_neg hb, if_neg hab, if_pos hlt, ih]
+      ${K("have")} hle : toNat b ≤ toNat a := ${K("by")} omega
+      ${C("-- Chapter 2 again: the subtraction really computes a − b")}
+      ${K("have")} ${T("hsub","lem","hsub : toNat (verticalSub a b false) = toNat a - toNat b","","verticalSub_correct' rearranged by omega into subtraction shape — safe here because hle guarantees no truncation.")} : toNat (verticalSub a b ${K("false")}) = toNat a - toNat b := ${K("by")}
+        ${K("have")} := verticalSub_correct' a b hle; omega
+      rw [hsub]
+      ${T("exact","tac","exact Nat.gcd_sub_self_left hle","Nat.gcd (toNat a - toNat b) (toNat b) = Nat.gcd (toNat a) (toNat b)","§1's equation, closing the case.")} ${T("Nat.gcd_sub_self_left","lem","Nat.gcd_sub_self_left (h : m ≤ n) : Nat.gcd (n - m) m = Nat.gcd n m","","The heart of the chapter, from Mathlib. Why it's true: common divisors of a and b are exactly the common divisors of a − b and b — divisors pass through differences and sums.")} hle
+  | case5 a b ha hb hab hge ih =&gt;
+      ${C("-- toNat a < toNat b: the mirror branch")}
+      rw [gcdSub, if_neg ha, if_neg hb, if_neg hab, if_neg hge, ih]
+      ${K("have")} hle : toNat a ≤ toNat b := ${K("by")} omega
+      ${K("have")} hsub : toNat (verticalSub b a ${K("false")}) = toNat b - toNat a := ${K("by")}
+        ${K("have")} := verticalSub_correct' b a hle; omega
+      rw [hsub]
+      ${C("-- the library lemma subtracts on the left, so flip both sides first")}
+      ${T("rw","tac","rw [Nat.gcd_comm (toNat a), Nat.gcd_comm (toNat a)]","Nat.gcd (toNat b - toNat a) (toNat a) = Nat.gcd (toNat b) (toNat a)","gcd is symmetric; two commutes put the subtraction on the left where Nat.gcd_sub_self_left wants it.")} [${T("Nat.gcd_comm","lem","Nat.gcd_comm : Nat.gcd m n = Nat.gcd n m","","Symmetry of gcd — the rectangle doesn't care which side you call a.")} (toNat a), Nat.gcd_comm (toNat a)]
+      ${K("exact")} Nat.gcd_sub_self_left hle</pre></details>
+  <p class="pstep">Theorem 2 · What gcd <em>means</em> — the tiling theorem <span class="n">— the geometry, made precise</span></p>
+<div class="ideas"><div class="ideas-h">The argument</div><p>§1 claimed the algorithm answers the tiling question; that claim is itself a theorem. A square of side <code>s</code> tiles the a × b rectangle exactly when <code>s</code> divides both sides, so "largest tile" splits into two obligations: the answer divides both sides, and every other common divisor divides the answer (so none can be larger). Both halves are free once we rewrite by <code>gcdSub_correct</code> — with the algorithm pinned to <code>Nat.gcd</code>, Mathlib already knows the gcd divides each argument (<code>Nat.gcd_dvd_left</code>/<code>_right</code>) and absorbs every common divisor (<code>Nat.dvd_gcd</code>). That reuse is the whole payoff of Theorem 1.</p></div>
+<details class="leandrop"><summary></summary><pre class="lean">${K("theorem")} ${T("gcdSub_tiles","lem","gcdSub_tiles (a b : MultiDigit) :\n  (toNat (gcdSub a b) ∣ toNat a ∧ toNat (gcdSub a b) ∣ toNat b)\n  ∧ ∀ s, s ∣ toNat a → s ∣ toNat b → s ∣ toNat (gcdSub a b)","","Part 1: the answer is a valid tile — it divides both edges. Part 2: it is the best one — every other valid tile size divides it, so none exceeds it.")} (a b : MultiDigit) :
+    (toNat (gcdSub a b) ∣ toNat a ∧ toNat (gcdSub a b) ∣ toNat b)
+    ∧ ∀ s, s ∣ toNat a → s ∣ toNat b → s ∣ toNat (gcdSub a b) := ${K("by")}
+  ${C("-- the algorithm's output equals Nat.gcd, so every gcd fact transfers")}
+  rw [gcdSub_correct]
+  ${T("refine","tac","refine ⟨⟨?_, ?_⟩, ?_⟩","three goals — the two divisibilities and the maximality","Splits the nested conjunction into its three parts, leaving a hole (?_) for each. A sharper constructor.")} ⟨⟨?_, ?_⟩, ?_⟩
+  · ${T("exact","tac","exact Nat.gcd_dvd_left (toNat a) (toNat b)","Nat.gcd (toNat a) (toNat b) ∣ toNat a","The tile fits a whole number of times across a.")} ${T("Nat.gcd_dvd_left","lem","Nat.gcd_dvd_left m n : Nat.gcd m n ∣ m","","Mathlib: the gcd divides its first argument.")} (toNat a) (toNat b)
+  · ${K("exact")} Nat.gcd_dvd_right (toNat a) (toNat b)
+  · ${T("intro","tac","intro s hsa hsb","s ∣ Nat.gcd (toNat a) (toNat b)","Bring the arbitrary tile size s and its two divisibility facts into scope.")} s hsa hsb
+    ${K("exact")} ${T("Nat.dvd_gcd","lem","Nat.dvd_gcd : s ∣ m → s ∣ n → s ∣ Nat.gcd m n","","Mathlib: anything dividing both numbers divides their gcd — so no common divisor, hence no valid tile, is larger.")} hsa hsb</pre></details>`; }
+
+/* ---- MCQ engine ---- */
+function mcq(elId,options,correct,onCorrect){const el=$(elId);el.innerHTML="";
+  options.forEach((o,idx)=>{const b=document.createElement("button");b.className="opt";b.innerHTML=o.text;
+    b.onclick=()=>{Array.from(el.children).forEach(c=>c.classList&&c.classList.remove("right","wrong"));
+      let w=el.querySelector(".fb");if(!w){w=document.createElement("div");w.className="fb";el.appendChild(w);}
+      if(idx===correct){b.classList.add("right");w.className="fb ok";w.innerHTML="✓ "+o.why;if(onCorrect)onCorrect();}
+      else{b.classList.add("wrong");w.className="fb no";w.innerHTML="✗ "+o.why;}};
+    el.appendChild(b);});}
+
+$("gcdImpl").innerHTML=gcdImpl();
+$("proofGcd").innerHTML=gcdProof();
+bindTips();
+start();
+
+/* §4 */
+mcq("preMCQ",[
+  {text:"toNat (gcdSub a b) = Nat.gcd (toNat a) (toNat b) — pin it to the library's gcd.",
+   why:"Right — with the algorithm equal to Nat.gcd, every library fact about gcd transfers for free. The tiling theorem in §5 then unpacks what gcd means."},
+  {text:"gcdSub a b = Nat.gcd a b, with no toNat anywhere.",
+   why:"Type mismatch: gcdSub returns a digit list and Nat.gcd works on numbers — toNat is the bridge, as in every chapter."},
+  {text:"Just that gcdSub terminates on every input.",
+   why:"Termination is settled at the definition (§2's decreasing_by); the theorem must say the answer is right, not merely that one arrives."},
+  {text:"That gcdSub a b divides both a and b.",
+   why:"True but only half the job — 1 divides everything too. The largest part is what makes it the gcd, and pinning to Nat.gcd captures both halves at once."},
+],0);
+mcq("keyMCQ",[
+  {text:"Common divisors of (a, b) and of (a − b, b) are the same, so the greatest one is too.",
+   why:"Right — anything dividing a and b divides their difference; anything dividing a − b and b divides their sum a. Same divisor set, same gcd: Nat.gcd_sub_self_left."},
+  {text:"Because a − b is smaller than a, and smaller inputs are easier.",
+   why:"That's why the recursion terminates, not why the answer is preserved. Correctness and termination are separate debts — this chapter pays each explicitly."},
+  {text:"Because b divides a − b.",
+   why:"Usually false — 36 doesn't divide 12. No divisibility between the two numbers is needed; only the shared divisors matter."},
+  {text:"It doesn't — the answer changes, and the final theorem corrects for it.",
+   why:"If each step changed the answer, no bookkeeping could recover it. The whole design is that the answer is invariant while the inputs shrink."},
+],0);
+mcq("termPreMCQ",[
+  {text:"The sum of the two values strictly drops at every recursive call.",
+   why:"Right — that is the termination_by measure. Subtracting the (positive!) smaller value from the larger shrinks the sum, and Chapter 2's theorem is what proves the subtraction really subtracts."},
+  {text:"Each argument is smaller after every call.",
+   why:"Only one of them shrinks per call — the other is passed through unchanged. A measure must combine them."},
+  {text:"Lean can see that subtraction makes things smaller.",
+   why:"Not through verticalSub it can't — that's an arbitrary function returning a list. Its correctness theorem must be cited before 'it subtracts' is known at all."},
+  {text:"The if-chain guarantees some branch is non-recursive.",
+   why:"Base cases alone prove nothing — a recursion can have base cases and still never reach them. What's needed is progress toward them: a decreasing measure."},
+],0);
+
+/* §6 */
+mcq("zeroMCQ",[
+  {text:"No — but the 0-cases are still required, for inputs that start at 0.",
+   why:"Right on both counts: subtracting the smaller from the strictly larger keeps both positive, so the recursion never creates a 0. But a Lean function is total — and without the guard, gcdSub 0 5 would subtract 0 forever, making no progress."},
+  {text:"Yes — the final subtraction leaves 0.",
+   why:"The final state is equal sides, caught by the a = b case before any subtraction could zero one out. Equal sides never subtract."},
+  {text:"No — so the 0-cases are dead code that could be deleted.",
+   why:"Delete them and gcdSub 0 5 recurses on (0, 5 − 0) = (0, 5): no progress, no termination, and Lean rejects the definition."},
+  {text:"Yes — that's how the recursion normally stops.",
+   why:"It stops at a square (a = b), the leftover square of §1. The 0-cases serve inputs that begin at 0, not the carving's endgame."},
+],0);
+mcq("funindMCQ",[
+  {text:"One goal per branch of the definition, with the IH at each recursive call.",
+   why:"Right — Lean derives gcdSub.induct from the definition itself. The five if-branches become five cases, each carrying its branch conditions (ha, hb, hlt…) as hypotheses, and the recursive branches get the theorem pre-assumed for their recursive arguments."},
+  {text:"Induction on the length of the list a.",
+   why:"The recursion doesn't shorten lists — a − b can have as many digits as a. List induction has nothing to grab here; the recursion's own structure is the ladder."},
+  {text:"The same thing as cases: a plain five-way split.",
+   why:"A plain split would leave the recursive calls as mysteries. The entire point is the inductive hypothesis appearing exactly at gcdSub (a − b) b."},
+  {text:"It re-proves termination as part of the induction.",
+   why:"Termination was paid once, at the definition. The induction principle exists because the function was accepted; it doesn't re-open that debt."},
+],0);
+mcq("reuseMCQ",[
+  {text:"In the termination proof, and in the correctness proof's subtraction step.",
+   why:"Right — decreasing_by uses it to show the measure drops (the subtraction really shrinks the sum), and case4/case5 use it to turn toNat (verticalSub a b false) into toNat a − toNat b. One theorem, two debts paid."},
+  {text:"Only in the termination proof.",
+   why:"Look at case4: hsub is verticalSub_correct' rearranged. Without it, the goal still mentions verticalSub and no gcd lemma applies."},
+  {text:"It isn't used — Chapter 2 is only recalled for intuition.",
+   why:"It is cited by name in three places. This chapter literally does not compile without Chapter 2's theorem."},
+  {text:"In the two base cases, to handle empty lists.",
+   why:"The base cases are about 0 values and equal values — no subtraction happens there at all."},
+],0);
+mcq("slowMCQ",[
+  {text:"About a million — one subtraction per step.",
+   why:"Right — gcd(1000000, 1) subtracts 1 a million times: every step removes one 1×1 square from a 1000000 × 1 strip. The classic fast Euclid replaces a run of subtractions with a single remainder (a mod b), collapsing the million steps into one. Correctness first, speed later."},
+  {text:"About 20 — gcd is always fast.",
+   why:"The remainder version takes ~20 steps here; the subtractive one does not. That gap is exactly why the mod version exists."},
+  {text:"Exactly 2 — one per argument.",
+   why:"Each step subtracts only 1; the strip narrows by one unit at a time."},
+  {text:"It doesn't terminate on such lopsided inputs.",
+   why:"It terminates — the measure drops by 1 each step, a million times. Slow is not the same as forever, and the termination proof covers both."},
+],0);
+mcq("traceMCQ",[
+  {text:"7, via (14, 21) → (14, 7) → (7, 7).",
+   why:"Right: 14 &lt; 21 so subtract to (14, 7); then 7 &lt; 14 so subtract to (7, 7); equal sides, so the answer is 7 — and gcd(14, 21) = 7."},
+  {text:"1 — 14 and 21 share no common factor.",
+   why:"They share 7. Carve it out: (14, 21) → (14, 7) → (7, 7), a 7×7 square."},
+  {text:"14 — the smaller input.",
+   why:"The gcd is the smaller number only when it divides the larger. Here the carving runs down to (7, 7)."},
+  {text:"3 — roughly half of 7.",
+   why:"Nothing rounds; every step is an exact subtraction, and the run ends exactly at (7, 7)."},
+],0);
+mcq("tilesMCQ",[
+  {text:"Dividing both sides only makes it a common divisor — 1 does that too. The second half is what makes it the greatest.",
+   why:"Right: part one says the answer is a valid tile; part two (every common divisor divides it) says nothing larger tiles the rectangle. Together they characterise the greatest common divisor."},
+  {text:"The first half is enough; the second is only there for the termination proof.",
+   why:"Termination was settled at the definition. Without the second half, 1 would satisfy part one — you could not call the answer greatest."},
+  {text:"The two halves say the same thing twice.",
+   why:"They point opposite ways: 'divides both' versus 'is divided by every common divisor'. Only the pair pins the gcd."},
+  {text:"The first half already forces the answer to be largest, by size.",
+   why:"Dividing two numbers doesn't make you the largest that does — 1 divides them too. Largeness comes from the divisibility in part two."},
+],0);
+mcq("equalMCQ",[
+  {text:"Nothing breaks — it still returns the right answer and still terminates; the check just saves one step.",
+   why:"With a = b the b &lt; a branch is false, so it takes the else branch, subtracts a from b to get 0, and the next call hits the toNat = 0 case and returns a. Correct, and the measure still drops — the equal check is an optimisation that skips that redundant subtract-to-zero."},
+  {text:"It loops forever: with a = b, neither subtraction branch shrinks the measure.",
+   why:"It does shrink — subtracting a from an equal b gives 0, so the sum falls from 2·a to a, and the 0-case ends it. (This is the tempting wrong answer.)"},
+  {text:"It returns the wrong answer whenever a = b.",
+   why:"It still returns a: after subtracting to 0, the toNat b = 0 branch hands back the other argument, which is a = gcd(a, a)."},
+  {text:"Lean rejects the definition for a missing case.",
+   why:"No case is missing — two subtraction branches plus the two 0-cases cover every input. The equal-sides branch is a shortcut, not a required case."},
+],0);
+
+/* ---- worksheet ---- */
+const CHECK_URL = (location.protocol==="file:") ? "http://localhost:5000/check" : "/check";
+const CELLS=[
+  {ex:"gcd_eval", n:1, kind:"compute", title:"Run the algorithm",
+   prompt:`gcd(48, 36) = 12 — the worked example from §1. The statement runs the whole recursion (and, inside it, Chapter 2's subtraction), so use the compiled checker.`,
+   ctx:`<span class="kw">example</span> : toNat (gcdSub [⟨8,_⟩,⟨4,_⟩] [⟨6,_⟩,⟨3,_⟩]) = 12 := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `Everything here is a concrete, fully-determined computation: definite numbers in, a definite number out. You don't need to reason about the recursion &mdash; you just need Lean to run it and check the result.`,
+     `This is the same closed-computation tactic used throughout the compiled worksheet (the one that actually evaluates definitions rather than merely reducing them). Reach for <code>native_decide</code>.`],
+   sol:`native_decide`},
+  {ex:"gcd_term", n:2, kind:"proof", title:"The termination argument, stripped bare",
+   prompt:`This is §2's decreasing_by, reduced to its arithmetic: if <code>y</code> is positive and fits inside <code>x</code>, then after subtracting it the sum has strictly dropped. Linear arithmetic — you know the tactic.`,
+   ctx:`<span class="kw">example</span> (x y : Nat) (h1 : 0 &lt; y) (h2 : y ≤ x) :
+    (x - y) + y &lt; x + y := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"one tactic…",
+   hints:[
+     `The goal is pure linear arithmetic over naturals &mdash; only <code>+</code>, <code>-</code> and <code>&lt;</code> on <code>Nat</code>, with the two hypotheses giving you exactly what you need. Recall the decision procedure that closes such goals on its own.`,
+     `This is the same one-shot arithmetic tactic that discharged the <code>decreasing_by</code> obligations in §2. Use <code>omega</code>.`],
+   sol:`omega`},
+  {ex:"gcd_case", n:3, kind:"code", title:"Fill the carving branch",
+   prompt:`Complete the <code>toNat b &lt; toNat a</code> branch of <code>studentGcd</code> (a copy of <code>gcdSub</code>): subtract the smaller from the larger and recurse. Mirror the symmetric branch shown below it — mind which argument shrinks.`,
+   ctx:`  <span class="kw">else if</span> toNat b &lt; toNat a <span class="kw">then</span>
+    <span class="ph">‹ your answer ›</span>
+  <span class="kw">else</span>
+    <span class="c">studentGcd a (verticalSub b a false)</span>`,
+   ph:"recurse on the carved rectangle…",
+   hints:[
+     `You are in the branch where <code>a</code> is the larger side. Euclid's step carves the smaller square off the larger side and recurses on what's left, keeping the other side untouched. Compare with the symmetric <code>else</code> branch shown just below.`,
+     `The recursive call is <code>studentGcd</code> applied to two sides; form the shortened side with <code>verticalSub</code> (the borrow flag starts <code>false</code>). The other argument passes through unchanged.`,
+     `It mirrors the <code>else</code> branch printed just below — the same <code>studentGcd</code> recursion, but work out which side gets shortened when <code>a</code> is the larger one, and which passes through unchanged.`],
+   sol:`studentGcd (verticalSub a b false) b`},
+  {ex:"gcd_cite", n:4, kind:"proof", title:"Harvest the tiling theorem",
+   prompt:`The answer divides the first side — that is one third of <code>gcdSub_tiles</code>. Its statement is a nested pair: <code>((∣ a ∧ ∣ b) ∧ maximality)</code>. Cite the theorem and project out the piece you need with <code>.1</code> and <code>.2</code>, Chapter 0 style.`,
+   ctx:`<span class="kw">example</span> (a b : MultiDigit) : toNat (gcdSub a b) ∣ toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"exact …",
+   hints:[
+     `You don't need to prove divisibility from scratch &mdash; it's already packaged inside <code>gcdSub_tiles</code>. Your job is only to pull out the exact sub-fact the goal asks for.`,
+     `Apply the term-mode closer <code>exact</code> to <code>gcdSub_tiles a b</code>, then reach into its nested pair with the projections <code>.1</code> and <code>.2</code> (Chapter 0's anatomy-of-a-proof style).`],
+   sol:`exact (gcdSub_tiles a b).1.1`},
+  {ex:"gcd_comm", n:5, kind:"proof", title:"Order doesn't matter",
+   prompt:`gcd(a, b) = gcd(b, a) — the rectangle doesn't care which side you call the width. The two rewrites through <code>gcdSub_correct</code> are done for you, turning the goal into a fact about <code>Nat.gcd</code>; finish by citing the library's commutativity lemma.`,
+   ctx:`<span class="kw">example</span> (a b : MultiDigit) :
+    toNat (gcdSub a b) = toNat (gcdSub b a) := <span class="kw">by</span>
+  rw [gcdSub_correct, gcdSub_correct]
+  <span class="ph">‹ your proof ›</span>`,
+   ph:"exact Nat.gcd_comm …",
+   hints:[
+     `The two rewrites have already turned the goal into a plain statement about <code>Nat.gcd</code> of two numbers. Commutativity of gcd on the naturals is a standard library fact &mdash; recall the earlier &ldquo;order doesn't matter&rdquo; results.`,
+     `Close it in term mode with <code>exact</code>, citing the library lemma <code>Nat.gcd_comm</code>, which takes the two numbers as explicit arguments.`],
+   sol:`exact Nat.gcd_comm (toNat a) (toNat b)`},
+  {ex:"gcd_build", n:6, kind:"proof", title:"Build a short proof — gcd with zero",
+   prompt:`When the second side is zero, the gcd is just the first side. Rewrite through the correctness theorem and the hypothesis, then let <code>simp</code> finish with the library fact that <code>gcd n 0 = n</code>.`,
+   ctx:`<span class="kw">example</span> (a b : MultiDigit) (h : toNat b = 0) : toNat (gcdSub a b) = toNat a := <span class="kw">by</span>
+  <span class="ph">‹ your proof — two steps ›</span>`,
+   ph:"rw [gcdSub_correct, h], then simp",
+   hints:[
+     `First turn the algorithm into <code>Nat.gcd</code> with the correctness theorem, and substitute the hypothesis so the second argument becomes 0.`,
+     `<code>rw [gcdSub_correct, h]</code> leaves <code>Nat.gcd (toNat a) 0 = toNat a</code>, and <code>simp</code> closes it (it knows gcd n 0 = n).`],
+   sol:`rw [gcdSub_correct, h]
+  simp`},
+  {ex:"gcd_whole", n:7, kind:"proof", title:"Write a whole proof, start to finish",
+   prompt:`Invoke the chapter's flagship: the subtractive algorithm computes exactly Lean's built-in <code>Nat.gcd</code>. State it and prove it — the theorem is already there.`,
+   ctx:`<span class="kw">example</span> (a b : MultiDigit) : toNat (gcdSub a b) = Nat.gcd (toNat a) (toNat b) := <span class="kw">by</span>
+  <span class="ph">‹ your whole proof ›</span>`,
+   ph:"one term-mode line…",
+   hints:[
+     `You don't need the functional induction again — the chapter's main correctness theorem is exactly this statement.`,
+     `Close it with <code>exact</code>, citing <code>gcdSub_correct</code> applied to <code>a</code> and <code>b</code>.`],
+   sol:`exact gcdSub_correct a b`},
+];
+function cellHTML(c){ return `<div class="wcell" data-ex="${c.ex}">
+  <div class="whead"><span class="wn">Exercise ${c.n}</span><span class="wtitle">${c.title}</span><span class="wkind ${c.kind}">${c.kind}</span></div>
+  <div class="wprompt">${c.prompt}</div>
+  ${c.ctx?`<pre class="lean wctx">${c.ctx}</pre>`:""}
+  <div class="wedit"><textarea class="led" placeholder="${ae(c.ph)}"></textarea></div>
+  <div class="wbar"><button class="run">▶ Run</button><span class="wstat"></span></div>
+  <pre class="out"></pre>
+  ${c.hints&&c.hints.length?`<div class="whints">${c.hints.map((h,i)=>`<details class="whint"><summary>Hint ${i+1}</summary><div>${h}</div></details>`).join("")}</div>`:""}
+  <details class="refsol"><summary></summary><pre class="lean">${c.sol}</pre></details>
+</div>`; }
+async function runCell(cell){
+  const ex=cell.dataset.ex, ta=cell.querySelector("textarea"), out=cell.querySelector(".out"), st=cell.querySelector(".wstat");
+  const code=ta.value;
+  if(!code.trim()){ out.className="out"; out.textContent="Write something first."; st.textContent=""; return false; }
+  out.className="out"; out.textContent="checking… (first run cold-loads Mathlib)"; st.textContent="";
+  try{
+    const r=await fetch(CHECK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exercise:ex,code})});
+    const j=await r.json();
+    if(j.ok){ out.className="out ok"; out.textContent="all checks passed ✓"; st.style.color="var(--green)"; st.textContent="✓"; return true; }
+    else { out.className="out no"; out.textContent=j.output||"(no output)"; st.style.color="var(--red)"; st.textContent="✗"; return false; }
+  }catch(e){ out.className="out no"; out.textContent="Could not reach the checker server. Start it with: python web/checker/app.py"; st.textContent=""; return false; }
+}
+$("worksheet").innerHTML=CELLS.map(cellHTML).join("");
+document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector(".run").onclick=()=>runCell(cell); });
+$("runAll").onclick=async ()=>{
+  const cells=[...document.querySelectorAll(".wcell")]; let pass=0;
+  for(let i=0;i<cells.length;i++){ $("wsstatus").textContent=`running ${i+1} / ${cells.length}…`; if(await runCell(cells[i]))pass++; }
+  $("wsstatus").textContent=`done — ${pass} / ${cells.length} passed`;
+};
+$("clearAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ const o=cell.querySelector(".out"); o.className="out"; o.textContent=""; cell.querySelector(".wstat").textContent=""; }); $("wsstatus").textContent=""; };
+$("resetAll").onclick=()=>{ document.querySelectorAll(".wcell").forEach(cell=>{ cell.querySelector("textarea").value=""; }); $("clearAll").onclick(); };
+</script>
+<script src="book.js"></script>
+</body>
+</html>

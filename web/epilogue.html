@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Epilogue — Learn2Lean</title>
+<meta name="description" content="What you built across eight chapters of Learn2Lean, where formal verification goes from here, and how to carry on with Lean."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📕</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#9a9a9a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--red:#f44336;--orange:#ff8c00;--accent:#2f7d8c;--link:#6cc7d6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.7}
+  .wrap{max-width:760px;margin:0 auto;padding:30px 22px 90px}
+  h1{font-size:26px;margin:0 0 4px;color:#fff}
+  h2{font-size:19px;color:#fff;margin:40px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+  .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  a{color:var(--link)} p{margin:12px 0}
+  .lead{font-size:16px}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.9em}
+  em{color:#e7d9a8;font-style:normal}
+  ul{margin:12px 0;padding-left:22px} li{margin:8px 0}
+  .rlist a{font-weight:600}
+  .note{background:#11181a;border-left:3px solid var(--accent);padding:10px 14px;margin:16px 0;font-size:14px;color:#cfe7ec;border-radius:0 6px 6px 0}
+  .pager{display:flex;justify-content:space-between;margin-top:40px;padding-top:14px;border-top:1px solid var(--line);font-size:14px}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <p class="sub"><a href="cover.html">← Contents</a></p>
+  <h1>Epilogue</h1>
+  <p class="sub">What you built, and where it goes from here.</p>
+
+  <p class="lead">Eight chapters ago the pitch was that formal verification only sounds like specialist work. If you
+     made it here, you've now done it — on arithmetic you've known since primary school, but done properly.</p>
+
+  <h2 id="s1">What you actually did</h2>
+  <p>You took the algorithms everyone learns by hand and wrote each one as a Lean program: the carry in addition,
+     the borrow in subtraction, partial products in multiplication, the trial-digit search in division, the digit
+     tests for divisibility, Euclid's rectangle-carving gcd, and two mental "tricks" that turned out to have real
+     theorems hiding inside them.</p>
+  <p>Then, for every one, you did the thing that makes it verification rather than programming: you
+     <em>proved</em> it correct — not checked it on a few examples, but showed it gives the right answer for
+     <em>every</em> input there is. And these aren't proofs you have to take on trust. Lean's kernel checked each
+     one, and it would have rejected a single wrong step. The green checkmark means the machine agrees.</p>
+  <p>Along the way you met the ideas that carry all of formal verification — each introduced in one chapter, then used
+     again and again:</p>
+  <ul>
+    <li>a <strong>specification</strong> — what "correct" even means (the <code>toNat</code> correspondence, from
+       <a href="addition.html">Chapter 1</a> on) — and the harder skill of telling a <em>right</em> spec from a
+       plausible-but-weak one (<a href="division.html">Ch 4</a>, <a href="gcd.html">6</a>,
+       <a href="squareroot.html">8</a>);</li>
+    <li>an <strong>invariant</strong> that holds at every step of a loop — the carry in
+       <a href="addition.html">Chapter 1</a>, <code>value = q·b + r</code> in <a href="division.html">4</a>,
+       <code>r ≤ 2q</code> in <a href="squareroot.html">8</a>;</li>
+    <li>a <strong>precondition</strong> that must be assumed and re-earned (<a href="subtraction.html">b ≤ a</a>,
+       <a href="division.html">b ≠ 0</a>);</li>
+    <li><strong>induction</strong> to reach past the finite examples to all inputs at once — and
+       <strong>generalizing</strong> the statement so the induction goes through (<a href="addition.html">the
+       arbitrary carry</a>);</li>
+    <li><strong>termination</strong>, shown by a measure that strictly shrinks (<a href="gcd.html">Chapter 6</a>);</li>
+    <li><strong>composition</strong>, building a verified operation from verified pieces
+       (<a href="multiplication.html">multiplication on addition</a>), and the choice between a
+       <strong>brute-force</strong> and a <strong>structural</strong> proof of the same theorem
+       (<a href="cuberoot.html">Chapter 7</a>).</li>
+  </ul>
+  <p>None of these change when the programs get serious.</p>
+
+  <h2 id="s2">Where this goes</h2>
+  <p>The same move — state a specification, prove the implementation meets it — scales a very long way:</p>
+  <ul>
+    <li><strong>Hardware.</strong> After the 1994 Pentium division bug cost Intel about $475 million, chip makers began
+       proving their circuits correct; Intel, AMD and Arm now formally verify floating-point and other arithmetic
+       units before the silicon ships.</li>
+    <li><strong>Compilers &amp; languages.</strong> <strong>CompCert</strong> is a C compiler proved to preserve the
+       meaning of the programs it compiles, so compilation can't introduce bugs the source didn't have.</li>
+    <li><strong>Operating systems.</strong> <strong>seL4</strong> is a microkernel proved correct down to its C
+       implementation, now used where failure isn't an option — aircraft, medical devices, defence.</li>
+    <li><strong>Security.</strong> Verified cryptography — the routines shipping in Firefox and Chrome — is proved to
+       match its mathematical spec, because a subtle bug there is a security hole.</li>
+    <li><strong>AI &amp; autonomy.</strong> Researchers now prove properties of the neural networks used in
+       safety-critical control — that an aircraft collision-avoidance network, for instance, never advises an unsafe
+       manoeuvre within a modelled envelope.</li>
+    <li><strong>Mathematics.</strong> <strong>Mathlib</strong>, the library your later chapters leaned on, is a
+       growing, machine-checked formalisation of modern mathematics, built by hundreds of people in the language you
+       just used.</li>
+  </ul>
+  <p>The distance between what you did and those projects is size and stamina, not kind. The <code>omega</code> and
+     <code>induction</code> you called are the same tactics; the rectangle only got bigger.</p>
+
+  <h2 id="s3">Carrying on with Lean</h2>
+  <p>If the folded-away Lean proofs pulled at you rather than put you off, these are the routes that fit best coming
+     from this book:</p>
+  <ul class="rlist">
+    <li><a href="https://adam.math.hhu.de/#/g/hhu-adam/NNG4" target="_blank" rel="noopener">The Natural Number Game</a>
+       — build the natural numbers and their arithmetic from nothing, in the browser. The gentlest start, and the
+       closest in spirit to what you just did.</li>
+    <li><a href="https://hrmacbeth.github.io/math2001/" target="_blank" rel="noopener">The Mechanics of Proof</a>
+       — a gentle, well-paced course in writing proofs in Lean; the best next book if you don't have much university
+       mathematics behind you.</li>
+    <li><a href="https://lean-lang.org/functional_programming_in_lean/" target="_blank" rel="noopener">Functional Programming in Lean</a>
+       — Lean as a programming language, for readers who came at this from the code side.</li>
+    <li><a href="https://lean-lang.org/theorem_proving_in_lean4/" target="_blank" rel="noopener">Theorem Proving in Lean&nbsp;4</a>
+       — the official book, when you want the language and its foundations properly.</li>
+    <li>the <a href="https://leanprover.zulipchat.com/" target="_blank" rel="noopener">Zulip chat</a> — where Mathlib
+       is built, and a welcoming place to ask a first question.</li>
+  </ul>
+  <div class="note">The best next step is small: clone
+     <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">this book's repo</a>,
+     open a chapter's worksheet in VS Code, and change one proof to see what breaks. Watching the goal state move
+     under your own edits is where it starts to click.</div>
+
+  <p class="lead">Thanks for reading. You came for a party trick or a curiosity about proofs, and you leave able to
+     read — and write — a statement that a program is correct, and to know the difference between believing it and
+     proving it. That's the whole game.</p>
+
+  <p class="sub" style="margin-top:24px">The Lean community keeps a fuller, always-current catalogue of tutorials,
+     games and books at <a href="https://leanprover-community.github.io/learn" target="_blank" rel="noopener">leanprover-community.github.io/learn</a>
+     — start there whenever you want the complete map.</p>
+
+  <div class="pager">
+    <a href="squareroot.html">← Square Roots by Hand</a>
+    <a href="cover.html">Contents</a>
+    <span class="sub" style="margin:0">fin.</span>
+  </div>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Learn2Lean — Verified Pen-and-Paper Arithmetic</title>
+<meta name="description" content="Learn2Lean: the arithmetic taught in school, written as programs and proved correct in Lean 4. A chapter-by-chapter book with visualisers and exercises."/>
+<meta name="theme-color" content="#0d0d0d"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📘</text></svg>"/>
+<style>
+  :root{
+    --bg:#0d0d0d;--panel:#161616;--box:#1a1a1a;--line:#333;--fg:#dcdcdc;--muted:#8a8a8a;
+    --yellow:#ffe14d;--cyan:#4dd0e1;--green:#4caf50;--accent:#2f7d8c;--link:#6cc7d6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.65}
+  .wrap{max-width:780px;margin:0 auto;padding:54px 22px 90px}
+  h1{font-size:40px;margin:0 0 2px;color:#fff;line-height:1.1;letter-spacing:-.01em}
+  .tagline{color:#fff;font-size:19px;margin:0 0 10px}
+  .sub{color:var(--muted);margin:0 0 26px;font-size:15px}
+  a{color:var(--link)} p{margin:11px 0} .lead{font-size:15px}
+  code{background:#1c1c1c;padding:1px 5px;border-radius:4px;color:#e6d28a;font-size:.92em}
+  em{color:#e7d9a8;font-style:normal}
+  .cta{display:inline-block;margin:18px 0 8px;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:15px;text-decoration:none}
+  .cta:hover{background:#3a98aa}
+  .howto{background:#11181a;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px;margin:16px 0 6px;font-size:13.5px;color:#cfe7ec}
+  .howto b{color:#fff}
+  .part{margin:40px 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);border-top:1px solid var(--line);padding-top:18px}
+  .toc{list-style:none;margin:6px 0;padding:0}
+  .toc li{margin:0}
+  .toc a,.toc .soon{display:flex;align-items:baseline;gap:12px;padding:11px 14px;border:1px solid var(--line);border-radius:9px;margin:8px 0;text-decoration:none;color:var(--fg);background:var(--panel)}
+  .toc a:hover{border-color:var(--accent);background:#13211f}
+  .toc .soon{color:var(--muted);background:#101010;cursor:default}
+  .num{color:var(--muted);font-size:13px;min-width:58px;flex:0 0 58px}
+  .ttl{flex:1;color:#fff}
+  .toc .soon .ttl{color:var(--muted)}
+  .desc{color:var(--muted);font-size:13px;flex:2;display:none}
+  .badge{font-size:11px;border-radius:4px;padding:2px 8px;font-weight:bold}
+  .badge.done{background:var(--green);color:#06210c} .badge.soon{background:#262626;color:var(--muted)}
+  .foot{margin-top:46px;border-top:1px solid var(--line);padding-top:16px;font-size:13.5px;color:var(--muted)}
+  @media(min-width:680px){.desc{display:block}}
+</style>
+<link rel="stylesheet" href="book.css"/>
+</head>
+<body>
+<div class="wrap">
+  <h1>Learn2Lean</h1>
+  <p class="tagline">Verified Pen-and-Paper Arithmetic</p>
+  <p class="sub">The arithmetic you learned in school, written as programs and proved correct in Lean&nbsp;4.</p>
+
+  <p class="lead">Formal verification has a reputation as specialist work, something for researchers and senior
+     engineers. But the question underneath it is plain enough: does a program actually do what it is meant
+     to? School arithmetic is a good place to start asking, because everyone already knows what the
+     right answer looks like.</p>
+
+  <p class="lead">The stakes are not academic. A single wrong division once cost Intel around $475 million in recalled
+     chips, and the same kind of proof you'll write here is what now guards processors, compilers, aircraft software
+     and cryptography. The wager of this book is that none of it is specialist magic: if you can follow long division,
+     you can read — and write — a machine-checked guarantee that a program is correct.</p>
+
+  <p class="lead">Every chapter takes one of these algorithms and works through it the same way: <em>describe</em> the
+     method, <em>implement</em> it as a Lean&nbsp;4 program, <em>run</em> it a step at a time, then <em>prove</em> it
+     correct for every possible input. You don't need to know Lean to begin. The writing keeps almost every
+     line within reach of someone seeing it for the first time.</p>
+
+  <a class="cta" href="prologue.html">Start reading →</a>
+
+  <div class="howto"><b>How to use this book.</b> Most of it runs in your browser — the explanations, the
+     step-by-step visualisations, and the multiple-choice checks. The exception is the "Write some Lean" worksheet
+     that closes each chapter: it sends your answer to Lean to compile, so it needs the checker server running
+     locally (see <code>web/checker</code>). Or clone the repo and do those exercises in your own
+     editor instead.</div>
+
+  <div class="part">Part I · Foundations</div>
+  <ul class="toc">
+    <li><a href="prologue.html">
+      <span class="num">Ch. 0</span><span class="ttl">Reading Lean Code &amp; representation</span>
+      <span class="desc">The notations and proof steps used throughout, and how a number is stored.</span>
+      <span class="badge done">ready</span></a></li>
+  </ul>
+
+  <div class="part">Part II · The four operations</div>
+  <ul class="toc">
+    <li><a href="addition.html">
+      <span class="num">Ch. 1</span><span class="ttl">Vertical Addition</span>
+      <span class="desc">Column sums, the carry, and the place-value invariant — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+    <li><a href="subtraction.html">
+      <span class="num">Ch. 2</span><span class="ttl">Vertical Subtraction</span>
+      <span class="desc">The same shape with a borrow, and the precondition that the top is at least the bottom — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+    <li><a href="multiplication.html">
+      <span class="num">Ch. 3</span><span class="ttl">Long Multiplication</span>
+      <span class="desc">Partial products and shifts, summed into the result — built on the addition chapter, with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+    <li><a href="division.html">
+      <span class="num">Ch. 4</span><span class="ttl">Long Division</span>
+      <span class="desc">The trial-digit search and running remainder, proved to give quotient and remainder — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+  </ul>
+
+  <div class="part">Part III · Number tricks</div>
+  <ul class="toc">
+    <li><a href="divisibility.html">
+      <span class="num">Ch. 5</span><span class="ttl">Divisibility Tests</span>
+      <span class="desc">Why the rules for 3, 9, and 11 work — digit sums and alternating sums, by modular arithmetic — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+    <li><a href="gcd.html">
+      <span class="num">Ch. 6</span><span class="ttl">Euclid's GCD</span>
+      <span class="desc">Repeated subtraction as rectangular tiling — the first termination proof and functional induction — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+    <li><a href="cuberoot.html">
+      <span class="num">Ch. 7</span><span class="ttl">The Cube-Root Trick</span>
+      <span class="desc">Recovering a perfect cube root from its units digit and leading group — proved correct two ways — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+    <li><a href="squareroot.html">
+      <span class="num">Ch. 8</span><span class="ttl">Square Roots by Hand</span>
+      <span class="desc">The digit-by-digit method, proved to return the integer floor of the root — the hardest chapter — with exercises.</span>
+      <span class="badge done">ready</span></a></li>
+  </ul>
+
+  <div class="part">Epilogue</div>
+  <ul class="toc">
+    <li><a href="epilogue.html">
+      <span class="num">—</span><span class="ttl">What you built, and where it goes</span>
+      <span class="desc">The ideas you now have, where formal verification scales to, and how to carry on with Lean.</span>
+      <span class="badge done">ready</span></a></li>
+  </ul>
+
+  <div class="foot">
+    <p>Source and all Lean proofs:
+       <a href="https://github.com/UnOrdinary19/Lean_formalization" target="_blank" rel="noopener">github.com/UnOrdinary19/Lean_formalization</a>.</p>
+  </div>
+</div>
+<script src="book.js"></script>
+</body>
+</html>
