@@ -437,5 +437,9 @@ def check():
 
 
 if __name__ == "__main__":
-    # 127.0.0.1 only — do NOT expose publicly without sandboxing (see README).
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    # Defaults to 127.0.0.1 (local only). On a server, expose it with
+    #   CHECKER_HOST=0.0.0.0 python app.py
+    # but only AFTER sandboxing — this endpoint runs arbitrary Lean (see README).
+    host = os.environ.get("CHECKER_HOST", "127.0.0.1")
+    port = int(os.environ.get("CHECKER_PORT", "5000"))
+    app.run(host=host, port=port, debug=False)

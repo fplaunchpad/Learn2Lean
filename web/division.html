@@ -390,7 +390,8 @@ ${K("def")} ${T("findQuotientDigit","lem","findQuotientDigit (n : Nat) (b : Digi
       ${K("let")} (units, tens) := mulTable q b
       ${K("let")} newRem := currentRem - (units.val + 10 * tens.val)  ${C("-- subtract q × b")}
       ${K("let")} (quotTail, finalRem) := longDivHelper ds b newRem
-      (q :: quotTail, finalRem)</pre>
+      (q :: quotTail, finalRem)
+${T("termination_by","tac","termination_by ds _ _ => ds.length","","Names the decreasing measure: each recursive call consumes one input digit, so the digit list shrinks and the recursion stops.")} ds _ _ => ds.length</pre>
 <p class="pstep">Layer 3 · Reverse, run, trim <span class="n">— reach the top digit first, tidy the answer</span></p>
 <p>Numbers are stored units-first, so <code>longDiv</code> reverses the list to reach the top digit first, runs the helper from remainder 0, reverses the quotient back, and trims any high-place zeros. <code>trimTrailingZeros</code> drops zeros from the high end of a units-first list without changing its value.</p>
 <pre class="lean">${K("def")} ${T("trimTrailingZeros","lem","trimTrailingZeros : MultiDigit → MultiDigit","","Removes high-place zeros (trailing in units-first list order, leading as written): [3,3,0] ↦ [3,3], [0,0,0] ↦ [].")} : MultiDigit → MultiDigit

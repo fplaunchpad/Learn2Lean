@@ -393,7 +393,8 @@ function subAlgo(){ return `<p class="pstep">Layer 1 · The single-digit table <
   | [],      [],      true   => []       ${C("-- leftover borrow: b &gt; a — precondition violated; [] is the undefined sentinel")}
   | [],      _ :: _,  _      => []       ${C("-- top exhausted, bottom remains — see note below")}
   | a :: as, [],      borrow => ${K("let")} (d, b') := subDigits a 0 borrow;  d :: verticalSub as [] b'
-  | a :: as, b :: bs, borrow => ${K("let")} (d, b') := subDigits a b borrow;  d :: verticalSub as bs b'</pre>`; }
+  | a :: as, b :: bs, borrow => ${K("let")} (d, b') := subDigits a b borrow;  d :: verticalSub as bs b'
+${T("termination_by","tac","termination_by a b _ => a.length + b.length","","Names the decreasing measure: every recursive call drops a digit from a, from b, or both, so the combined length always shrinks and the recursion stops.")} a b _ => a.length + b.length</pre>`; }
 
 function buildSubProof(){
   return `<p class="pstep">Layer 1 · The single-digit table <span class="n">— all 100 differences, checked one by one</span></p>

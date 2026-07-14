@@ -391,7 +391,8 @@ function sqrtImpl(){ return `<p class="pstep">Layer 1 · Pair the digits <span c
 <pre class="lean">${K("def")} ${T("chunkPairs","lem","chunkPairs : MultiDigit → List (Digit × Digit)","","Groups the digit list into pairs from the units end. Reversed by the caller so processing runs most-significant pair first.")} : MultiDigit → List (Digit × Digit)
   | []            => []
   | [d]           => [(d, ⟨0, _⟩)]          ${C("-- odd length: pair the last digit with 0")}
-  | d1 :: d2 :: ds => (d1, d2) :: chunkPairs ds</pre>
+  | d1 :: d2 :: ds => (d1, d2) :: chunkPairs ds
+${T("termination_by","tac","termination_by ds => ds.length","","Names the decreasing measure: each recursive call drops two digits, so the list length strictly shrinks and the recursion stops.")} ds => ds.length</pre>
 <p class="pstep">Layer 2 · The digit search <span class="n">— largest x with (2q·10 + x)·x ≤ n</span></p>
 <p>Count down from 9. The twist: the trial divisor <code>x :: twoQ</code> holds the candidate <code>x</code> as its
 own units digit, so it is rebuilt for every <code>x</code>. The product is Chapter 3's <code>mulDigit</code>.</p>
@@ -417,6 +418,7 @@ fits.</p>
       ${K("let")} trialProduct := mulDigit (x :: twoQ) x ⟨0,_⟩
       ${K("let")} newRem := ${T("verticalSub","lem","verticalSub currentRem trialProduct false","","Chapter 2's subtraction. Safe: findSqrtDigitHelper_correct guarantees trialProduct ≤ currentRem, so no underflow.")} currentRem trialProduct ${K("false")}
       sqrtHelper pairs newRem (x :: q)                      ${C("-- x is the next, less significant root digit")}
+${T("termination_by","tac","termination_by pairs _ _ => pairs.length","","Names the decreasing measure: each recursive call consumes one pair, so the list of pairs shrinks and the recursion stops.")} pairs _ _ => pairs.length
 
 ${K("def")} ${T("intSqrt","lem","intSqrt (a : MultiDigit) : MultiDigit × MultiDigit","","Top level: pair, reverse to MSB-first, run the loop from empty remainder and empty root, and trim.")} (a : MultiDigit) : MultiDigit × MultiDigit :=
   ${K("let")} pairs := (chunkPairs a).reverse                ${C("-- most-significant pair first")}

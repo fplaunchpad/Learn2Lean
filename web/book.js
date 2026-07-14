@@ -421,15 +421,12 @@
   /* ---------- visualiser: autoplay, random example, arrow keys ---------- */
   var nextB = byId("next"), prevB = byId("prev"), goB = byId("go");
   if (nextB && prevB && goB) {
-    var apT = null;
-    var apStop = function () { if (apT) { clearInterval(apT); apT = null; playB.textContent = "▶ play"; } };
-    var playB = el("button", "ghost", "▶ play"); playB.title = "autoplay";
+    var apStop = function () {};   // autoplay removed — kept as a no-op for the call sites below
+    var playB = el("button", "ghost", "▸ Next"); playB.title = "advance one column (or press →)";
     prevB.parentNode.insertBefore(playB, prevB);
     playB.onclick = function () {
-      if (apT) { apStop(); return; }
-      if (nextB.disabled) goB.click();
-      playB.textContent = "⏸ pause";
-      apT = setInterval(function () { if (!nextB.disabled) nextB.click(); else apStop(); }, 1300);
+      if (nextB.disabled) { goB.click(); }   // at the end (or not started): restart from column 1
+      else { nextB.click(); }                // otherwise advance exactly one column, instantly
     };
     if (cfg.rand) {
       var randB = el("button", "ghost", "🎲 random"); randB.title = "try a random example";
